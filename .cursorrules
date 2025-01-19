@@ -1,0 +1,3 @@
+This project is a Tauri 2.0 app that uses Rust on the backend (src-tauri directory) and TypeScript for the frontend (src directory). The TypeScript part utilizes shadcn-ui components and TailwindCSS for styling. The UI uses a dark theme with "slate" base color. When writing UI code make sure it's sleek and compact, use small buttons and minimal padding.
+
+The Rust backend is only responsible for bootstraping the app and for some core OS features, most of the app functionality is built using the TypeScript frontend. On the frontend the src/ff7 directory contains classes for reading/writing different file formats.
