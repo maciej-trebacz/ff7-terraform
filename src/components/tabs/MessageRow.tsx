@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ChangeEvent } from "react"
 
@@ -10,14 +9,14 @@ interface MessageRowProps {
 
 export function MessageRow({ index, message, onChange }: MessageRowProps) {
   return (
-    <div className="flex items-start gap-2 w-full">
-      <Badge variant="secondary" textAlign="center" className="shrink-0 font-bold mt-2 w-[89px]">
-        Message {index}
-      </Badge>
+    <div className="flex items-center gap-2 w-full">
+      <div className="shrink-0 font-bold w-[85px] text-zinc-300 text-sm">
+        Message {index}:
+      </div>
       <Textarea
         value={message}
         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-        className="flex-1 text-sm text-slate-200"
+        className="flex-1 text-sm text-zinc-300"
       />
     </div>
   )

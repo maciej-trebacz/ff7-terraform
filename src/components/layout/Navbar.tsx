@@ -69,7 +69,7 @@ export function Navbar() {
             </TabsTrigger>
           </div>
         </TooltipTrigger>
-        <TooltipContent className="bg-slate-800 text-slate-100 border-slate-700">
+        <TooltipContent>
           <p>Coming soon</p>
         </TooltipContent>
       </Tooltip>
@@ -78,27 +78,46 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="flex items-center gap-2 p-1 bg-slate-900 border-b border-slate-800">
+      <nav className="flex items-center gap-2 p-1 bg-zinc-900">
         <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="px-2"
-            onClick={handleOpenDirectory}
-          >
-            <FolderOpen className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="px-2 disabled:opacity-50"
-            onClick={handleSave}
-            disabled={!opened}
-          >
-            <Save className="h-4 w-4" />
-          </Button>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="px-2"
+                  onClick={handleOpenDirectory}
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Open FF7 game directory</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="px-2 disabled:opacity-50"
+                  onClick={handleSave}
+                  disabled={!opened}
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Save changes</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-        <div className="w-px h-6 bg-slate-800" />
+        <div className="w-px h-6 bg-zinc-800" />
         <TabsList className="bg-transparent border-0">
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <ComingSoonTab value="map">Map</ComingSoonTab>

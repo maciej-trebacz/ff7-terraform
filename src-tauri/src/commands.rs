@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use ff7_lib::utils::process;
 use tauri::ipc::Invoke;
 use ff7_lib::ff7::addresses::FF7Addresses;
