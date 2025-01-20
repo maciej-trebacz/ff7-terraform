@@ -14,6 +14,10 @@ export function StatusBarProvider({ children }: { children: ReactNode }) {
 
   const setMessageWithError = (message: string | Error, isError: boolean = false) => {
     const messageStr = message instanceof Error ? message.message : String(message)
+
+    // Ignore the FF7 is not running message
+    if (messageStr === "FF7 is not running") return;
+
     setMessage(messageStr)
     setIsError(isError)
   }

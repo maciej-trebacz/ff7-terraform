@@ -71,7 +71,8 @@ export class MesFile {
     }
 
     writeMessages(): Uint8Array {
-        const out = new Uint8Array(0x1000);
+        const MAX_MESSAGE_LENGTH = 0x1000;
+        const out = new Uint8Array(MAX_MESSAGE_LENGTH);
         const view = new DataView(out.buffer);
         const numMessages = this.data.messages.length;
         let pos = 0;
@@ -86,6 +87,10 @@ export class MesFile {
 
             view.setUint16(pos, offset, true);
             pos += 2;
+
+            if (offset + text.length > MAX_MESSAGE_LENGTH) {
+                throw new Error("Messages exceed maximum length of 4096 bytes.");
+            }
 
             out.set(text, offset);
 

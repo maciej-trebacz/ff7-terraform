@@ -28,7 +28,7 @@ const Textarea = React.forwardRef<
       autoComplete="off"
       spellCheck="false"
       className={cn(
-        "flex w-full rounded-md border border-input bg-zinc-900 px-2 py-1 text-base shadow-sm placeholder:text-muted-foreground outline-none ring-0 focus-visible:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm overflow-hidden resize-none",
+        "flex w-full rounded-md border border-input bg-zinc-900 px-2 py-1 text-base shadow-sm placeholder:text-muted-foreground outline-none ring-0 focus-visible:border-zinc-500 focus-visible:text-white disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden resize-none",
         className
       )}
       ref={(element) => {

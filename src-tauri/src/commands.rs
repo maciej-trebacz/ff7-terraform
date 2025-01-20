@@ -14,8 +14,14 @@ pub fn update_mes_data(data: Vec<u8>) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub fn is_ff7_running() -> bool {
+    process::is_ff7_running()
+}
+
 pub fn generate_handler() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync {
     tauri::generate_handler![
         update_mes_data,
+        is_ff7_running,
     ]
 }

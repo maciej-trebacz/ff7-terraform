@@ -21,6 +21,9 @@ export function Navbar() {
 
   const handleOpenDirectory = async () => {
     try {
+      // Clear focus from the button to prevent the tooltip from showing
+      document.activeElement instanceof HTMLElement && document.activeElement.blur()
+
       const selected = await open({
         directory: true,
         multiple: false,
@@ -32,7 +35,7 @@ export function Navbar() {
         
         if (validation.valid) {
           setDataPath(selected as string)
-          setMessage("Game directory loaded successfully")
+          setMessage("FF7 data directory loaded successfully")
         } else {
           showAlert("Invalid Directory", validation.error || "Unknown error occurred")
         }
@@ -56,7 +59,7 @@ export function Navbar() {
   }
 
   const ComingSoonTab = ({ value, children }: { value: string, children: React.ReactNode }) => (
-    <TooltipProvider delayDuration={100}>
+    <TooltipProvider delayDuration={100} >
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="cursor-not-allowed">
@@ -78,7 +81,7 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="flex items-center gap-2 p-1 bg-zinc-900">
+      <nav className="flex items-center gap-2 p-1 bg-zinc-900 border-b border-zinc-800">
         <div className="flex items-center gap-2">
           <TooltipProvider delayDuration={100}>
             <Tooltip>
@@ -98,7 +101,7 @@ export function Navbar() {
             </Tooltip>
           </TooltipProvider>
 
-          <TooltipProvider delayDuration={100}>
+          <TooltipProvider delayDuration={100} disableHoverableContent={true}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 

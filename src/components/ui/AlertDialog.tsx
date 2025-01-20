@@ -18,9 +18,9 @@ interface AlertDialogProps {
 export function AlertDialog({ open, onClose, title, description }: AlertDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] p-3 bg-slate-900 border border-slate-800">
+      <DialogContent className="text-xs max-w-[400px] p-3 pt-2.5">
         <DialogHeader>
-          <DialogTitle className="text-slate-100 text-center mt-1 mb-2">{title}</DialogTitle>
+          <DialogTitle className="text-lg">{title}</DialogTitle>
           <DialogDescription className="text-slate-300">
             {description}
           </DialogDescription>
@@ -29,7 +29,7 @@ export function AlertDialog({ open, onClose, title, description }: AlertDialogPr
           <Button 
             variant="secondary" 
             onClick={onClose}
-            className="bg-slate-800 text-slate-100 hover:bg-slate-700"
+            className="w-full"
           >
             OK
           </Button>

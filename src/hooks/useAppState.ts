@@ -1,9 +1,12 @@
 import { atom, useAtom } from 'jotai'
+import { useEffect } from 'react'
+import { invoke } from "@tauri-apps/api/core";
 
 interface AppState {
   dataPath: string | null
   opened: boolean
   openedTime: number
+  connected: boolean
   alert: {
     show: boolean
     title: string
@@ -15,6 +18,7 @@ const appStateAtom = atom<AppState>({
   dataPath: null,
   opened: false,
   openedTime: 0,
+  connected: false,
   alert: {
     show: false,
     title: '',
@@ -56,11 +60,28 @@ export function useAppState() {
     }))
   }
 
+  const checkConnection = async () => {
+    try {
+      const isRunning = await invoke<boolean>('is_ff7_running')
+      setState(prev => ({ ...prev, connected: isRunning }))
+    } catch (error) {
+      console.error('Failed to check FF7 connection:', error)
+      setState(prev => ({ ...prev, connected: false }))
+    }
+  }
+
+  useEffect(() => {
+    // Check connection immediately
+    checkConnection()
+    
+    // Then check every 2 seconds
+    const interval = setInterval(checkConnection, 2000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
   return {
-    dataPath: state.dataPath,
-    opened: state.opened,
-    openedTime: state.openedTime,
-    alert: state.alert,
+    ...state,
     setDataPath,
     showAlert,
     hideAlert

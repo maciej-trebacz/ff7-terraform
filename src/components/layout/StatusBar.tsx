@@ -1,4 +1,5 @@
 import { useStatusBar } from "@/hooks/useStatusBar";
+import { useAppState } from "@/hooks/useAppState";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { version } from "../../../src-tauri/tauri.conf.json";
@@ -6,7 +7,7 @@ import { AboutModal } from "../modals/AboutModal";
 
 export function StatusBar() {
   const { message, isError } = useStatusBar();
-  const connected = true;
+  const { connected } = useAppState();
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   return (
@@ -19,7 +20,7 @@ export function StatusBar() {
         <div className="flex items-center">
           <div
             className={cn(
-              connected ? "bg-green-500" : "bg-red-500",
+              connected ? "bg-green-500" : "bg-zinc-500",
               "h-[7px] w-[7px] rounded-full mr-1.5 "
             )}
           ></div>
