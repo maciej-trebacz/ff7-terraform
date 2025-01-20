@@ -1,7 +1,7 @@
-use ff7_lib::utils::process;
-use tauri::ipc::Invoke;
 use ff7_lib::ff7::addresses::FF7Addresses;
 use ff7_lib::utils::memory::write_memory_buffer;
+use ff7_lib::utils::process;
+use tauri::ipc::Invoke;
 
 #[tauri::command]
 pub fn update_mes_data(data: Vec<u8>) -> Result<(), String> {
@@ -20,8 +20,5 @@ pub fn is_ff7_running() -> bool {
 }
 
 pub fn generate_handler() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync {
-    tauri::generate_handler![
-        update_mes_data,
-        is_ff7_running,
-    ]
+    tauri::generate_handler![update_mes_data, is_ff7_running,]
 }

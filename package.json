@@ -19,6 +19,7 @@
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-fs": "^2.2.0",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-updater": "^2.3.1",
     "@types/lodash-es": "^4.17.12",
     "binary-parser": "^1.9.2",
     "class-variance-authority": "^0.7.1",

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod updater;
 
 use ff7_lib::utils::process;
 
@@ -11,9 +12,17 @@ pub fn main() {
     println!("FF7 scanner started");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                updater::update(handle).await.unwrap();
+            });
+            Ok(())
+        })
         .invoke_handler(commands::generate_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
