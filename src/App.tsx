@@ -8,12 +8,12 @@ import "./App.css"
 function App() {
   return (
     <StatusBarProvider>
-      <div className="h-screen flex flex-col bg-slate-950 text-slate-50">
-        <Tabs defaultValue="map" className="flex-1 flex flex-col">
+      <div className="h-full flex flex-col bg-slate-950 text-slate-50">
+        <Tabs defaultValue="messages" className="flex-1 flex flex-col h-full">
           <Navbar />
           <TabContent />
+          <StatusBar />
         </Tabs>
-        <StatusBar />
       </div>
     </StatusBarProvider>
   )

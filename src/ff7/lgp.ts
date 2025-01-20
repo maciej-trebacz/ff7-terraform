@@ -72,6 +72,7 @@ declare global {
 interface TOCEntry {
     filename: string;
     offset: number;
+    newOffset: number;
     filesize: number;
     check: number;
     conflictIndex: number;
@@ -161,7 +162,7 @@ export class LGP {
                 tocIndex[lookupIndex] += i + 1;
             }
         })
-        return fileCount.map((count, index) => ({tocIndex: index, fileCount: count}));
+        return fileCount.map((count, index) => ({tocIndex: tocIndex[index], fileCount: count}));
     }
 
     getFile(name: string): Uint8Array | null {
@@ -202,7 +203,7 @@ export class LGP {
 
         // Write TOC entries
         this.archive.toc.forEach(entry => {
-            entry.offset = dataOffset;
+            entry.newOffset = dataOffset;
             encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, pos, 20));
             pos += 20;
             view.setUint32(pos, dataOffset, true);
@@ -226,7 +227,7 @@ export class LGP {
         // Write file data
         pos = this.getDataOffset();
         this.archive.toc.forEach((entry, i) => {
-            encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, entry.offset, 20));
+            encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, entry.newOffset, 20));
             pos += 20;
             view.setUint32(pos, entry.filesize, true);
             pos += 4;

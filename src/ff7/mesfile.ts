@@ -39,8 +39,15 @@ interface Messages {
 export class MesFile {
     data: Messages;
 
-    constructor(data: Uint8Array) {
-        this.data = mesParser.parse(data);
+    constructor(data?: Uint8Array) {
+        if (data) {
+            this.data = mesParser.parse(data);
+        } else {
+            this.data = {
+                numMessages: 0,
+                messages: []
+            };
+        }
     }
 
     readMessage(index: number) {
@@ -49,6 +56,18 @@ export class MesFile {
 
     setMessage(index: number, message: string) {
         this.data.messages[index].text = message;
+    }
+
+    setMessages(messages: string[]) {
+        let pos = 2 + messages.length * 2;
+        this.data.messages = messages.map((text) => {
+            const offset = pos;
+            pos += text.length + 1;
+            return {
+                offset,
+                text
+            }
+        });
     }
 
     writeMessages(): Uint8Array {
