@@ -97,7 +97,7 @@ const encWParser = new Parser()
 export class EncWFile {
     data: EncWData;
 
-    constructor(data: Buffer) {
+    constructor(data: Uint8Array) {
         this.data = encWParser.parse(data);
     }
 
@@ -117,21 +117,22 @@ export class EncWFile {
         return this.data.randomEncounters.regions[region].sets[set];
     }
 
-    writeFile(): Buffer {
-        const out = Buffer.alloc(0x8a0); // Total size: 32 + 128 + 2048 bytes
+    writeFile(): Uint8Array {
+        const out = new Uint8Array(0x8a0); // Total size: 32 + 128 + 2048 bytes
+        const view = new DataView(out.buffer);
         let offset = 0;
 
         // Write Yuffie encounters
         this.data.yuffieEncounters.forEach((entry: YuffieEncounter) => {
-            out.writeUInt16LE(entry.cloudLevel, offset);
-            out.writeUInt16LE(entry.sceneId, offset + 2);
+            view.setUint16(offset, entry.cloudLevel, true);
+            view.setUint16(offset + 2, entry.sceneId, true);
             offset += 4;
         });
 
         // Write Chocobo ratings
         this.data.chocoboRatings.forEach((entry: ChocoboRating) => {
-            out.writeUInt16LE(entry.battleSceneId, offset);
-            out.writeUInt16LE(entry.rating, offset + 2);
+            view.setUint16(offset, entry.battleSceneId, true);
+            view.setUint16(offset + 2, entry.rating, true);
             offset += 4;
         });
 
@@ -142,32 +143,32 @@ export class EncWFile {
                 
                 // Write normal encounters
                 encounterSet.normalEncounters.forEach((entry: EncounterRecord) => {
-                    out.writeUInt16LE(entry.rate, offset);
-                    out.writeUInt16LE(entry.encounterId, offset + 2);
+                    view.setUint16(offset, entry.rate, true);
+                    view.setUint16(offset + 2, entry.encounterId, true);
                     offset += 4;
                 });
 
                 // Write back attacks
                 encounterSet.backAttacks.forEach((entry: EncounterRecord) => {
-                    out.writeUInt16LE(entry.rate, offset);
-                    out.writeUInt16LE(entry.encounterId, offset + 2);
+                    view.setUint16(offset, entry.rate, true);
+                    view.setUint16(offset + 2, entry.encounterId, true);
                     offset += 4;
                 });
 
                 // Write side attack
-                out.writeUInt16LE(encounterSet.sideAttack.rate, offset);
-                out.writeUInt16LE(encounterSet.sideAttack.encounterId, offset + 2);
+                view.setUint16(offset, encounterSet.sideAttack.rate, true);
+                view.setUint16(offset + 2, encounterSet.sideAttack.encounterId, true);
                 offset += 4;
 
                 // Write pincer attack
-                out.writeUInt16LE(encounterSet.pincerAttack.rate, offset);
-                out.writeUInt16LE(encounterSet.pincerAttack.encounterId, offset + 2);
+                view.setUint16(offset, encounterSet.pincerAttack.rate, true);
+                view.setUint16(offset + 2, encounterSet.pincerAttack.encounterId, true);
                 offset += 4;
 
                 // Write chocobo encounters
                 encounterSet.chocoboEncounters.forEach((entry: EncounterRecord) => {
-                    out.writeUInt16LE(entry.rate, offset);
-                    out.writeUInt16LE(entry.encounterId, offset + 2);
+                    view.setUint16(offset, entry.rate, true);
+                    view.setUint16(offset + 2, entry.encounterId, true);
                     offset += 4;
                 });
             }

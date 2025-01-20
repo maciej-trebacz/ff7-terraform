@@ -13,6 +13,13 @@ const REF_SIZE = 2;
 type DictionaryEntry = { [key: string]: number };
 type ReverseEntry = { [key: number]: string };
 
+// Helper function to convert Uint8Array to hex string
+function toHex(arr: Uint8Array): string {
+    return Array.from(arr)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 class Dictionary {
     private ptr: number;
     private d: DictionaryEntry[];
@@ -20,16 +27,15 @@ class Dictionary {
 
     constructor(ptr: number) {
         this.ptr = ptr;
-
         // Seed dictionary arrays with empty objects
         this.d = new Array(MAX_REF_LEN + 1).fill(null).map(() => ({}));
         this.r = new Array(MAX_REF_LEN + 1).fill(null).map(() => ({}));
     }
 
-    add(bytes: Buffer | string, hex: boolean = false): void {
+    add(bytes: Uint8Array | string, hex: boolean = false): void {
         // Because original source worked on string-like byte arrays we're using hex arrays here
         // This means string lengths are multiplied by 2
-        const s = hex ? bytes as string : Buffer.from(bytes as Buffer).toString("hex");
+        const s = hex ? bytes as string : toHex(bytes as Uint8Array);
         for (let length = MIN_REF_LEN; length < Math.min(s.length / 2, MAX_REF_LEN); length++) {
             const substr = s.substr(0, length * 2);
 
@@ -48,9 +54,9 @@ class Dictionary {
         this.ptr = (this.ptr + 1) & WINDOW_MASK;
     }
 
-    find(bytes: Buffer): [number, number] | null {
+    find(bytes: Uint8Array): [number, number] | null {
         // See the note above about working with hex strings
-        const s = bytes.toString('hex');
+        const s = toHex(bytes);
         for (let length = Math.min(MAX_REF_LEN, s.length / 2); length > MIN_REF_LEN - 1; length--) {
             const substr = s.substr(0, length * 2);
             if (substr in this.d[length]) {
@@ -129,12 +135,13 @@ export class Lzss {
         return Uint8Array.from(out);
     }
 
-    compress(data: Buffer): Uint8Array {
+    compress(data: Uint8Array): Uint8Array {
         const dictionary = new Dictionary(WINDOW_SIZE - 2 * MAX_REF_LEN);
 
         // Prime the dictionary
         for (let i = 0; i < MAX_REF_LEN; i++) {
-            dictionary.add(Buffer.from("\x00".repeat(MAX_REF_LEN - i)).toString("hex") + data.subarray(0, i).toString("hex"), true);
+            const primeData = new Uint8Array(MAX_REF_LEN - i);
+            dictionary.add(new Uint8Array([...primeData, ...data.slice(0, i)]));
         }
 
         let out: number[] = [];
@@ -146,18 +153,18 @@ export class Lzss {
                 if (i >= data.length)
                     break;
 
-                const found = dictionary.find(data.subarray(i, i + MAX_REF_LEN));
+                const found = dictionary.find(data.slice(i, i + MAX_REF_LEN));
                 if (found) {
                     const [offset, length] = found;
                     chunk = chunk.concat([offset & 0xFF, (((offset >> 4) & 0xF0) | (length - MIN_REF_LEN))]);
                     for (let j = 0; j < length; j++) {
-                        dictionary.add(data.subarray(i + j, i + j + MAX_REF_LEN));
+                        dictionary.add(data.slice(i + j, i + j + MAX_REF_LEN));
                     }
                     i += length;
                 } else {
                     chunk.push(data[i]);
                     flags |= (1 << bit);
-                    dictionary.add(data.subarray(i, i + MAX_REF_LEN));
+                    dictionary.add(data.slice(i, i + MAX_REF_LEN));
                     i += 1;
                 }
             }

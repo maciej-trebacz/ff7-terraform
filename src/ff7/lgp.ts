@@ -6,7 +6,6 @@ import {Parser} from 'binary-parser';
 
 const LOOKUP_VALUE_MAX = 30;
 const NUM_LOOKTAB_ENTRIES = LOOKUP_VALUE_MAX * LOOKUP_VALUE_MAX; // 900 entries
-const MAX_CONFLICTS = 4096;
 const DEFAULT_CREATOR = "SQUARESOFT";
 const DEFAULT_TERMINATOR = "FINAL FANTASY7";
 
@@ -226,7 +225,7 @@ export class LGP {
 
         // Write file data
         pos = this.getDataOffset();
-        this.archive.toc.forEach((entry, i) => {
+        this.archive.toc.forEach((entry) => {
             encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, entry.newOffset, 20));
             pos += 20;
             view.setUint32(pos, entry.filesize, true);

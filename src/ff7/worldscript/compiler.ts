@@ -107,7 +107,7 @@ export class Compiler {
           const opcode = Object.values(Opcodes).find(
             (op) => op[0] === item.children[0].value
           );
-          if (opcode && opcode[1] > 0) {
+          if (opcode && parseInt(opcode[1] as string) > 0) {
             newChildren.push("ResetStack");
           }
         }
@@ -133,8 +133,9 @@ export class Compiler {
         this.error("Label #" + jump[2] + " not found");
       }
 
-      let value = Buffer.alloc(2);
-      value.writeUInt16LE(label[0] + this.offset);
+      let value = new Uint8Array(2);
+      value[0] = (label[0] + this.offset) & 0xFF;
+      value[1] = ((label[0] + this.offset) >> 8) & 0xFF;
       this.out[jump[0] * 2] = value[0];
       this.out[jump[0] * 2 + 1] = value[1];
     }

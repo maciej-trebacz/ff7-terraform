@@ -139,7 +139,7 @@ interface Mesh {
 export class MapFile {
     public map: Map;
 
-    constructor(mapData: Uint8Array, botData: Uint8Array) {
+    constructor(mapData: Uint8Array) {
         this.map = mapParser.parse(mapData);
     }
 
@@ -266,7 +266,7 @@ export class MapFile {
         return pos;
     }
 
-    writeMap(filename: string) {
+    writeMap() {
         const out = new Uint8Array(this.map.sections.length * 0xB800);
         let pos = 0;
 
@@ -278,7 +278,7 @@ export class MapFile {
         return out;
     }
 
-    writeBot(filename: string) {
+    writeBot() {
         const numSections = 332;
         const out = new Uint8Array(numSections * 0xB800);
         let pos = 0;
