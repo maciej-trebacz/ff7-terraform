@@ -2,16 +2,24 @@ import { createContext, useContext, useState, ReactNode } from "react"
 
 interface StatusBarContextType {
   message: string
-  setMessage: (message: string) => void
+  isError: boolean
+  setMessage: (message: string | Error, isError?: boolean) => void
 }
 
 const StatusBarContext = createContext<StatusBarContextType | undefined>(undefined)
 
 export function StatusBarProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState("Ready")
+  const [isError, setIsError] = useState(false)
+
+  const setMessageWithError = (message: string | Error, isError: boolean = false) => {
+    const messageStr = message instanceof Error ? message.message : String(message)
+    setMessage(messageStr)
+    setIsError(isError)
+  }
 
   return (
-    <StatusBarContext.Provider value={{ message, setMessage }}>
+    <StatusBarContext.Provider value={{ message, isError, setMessage: setMessageWithError }}>
       {children}
     </StatusBarContext.Provider>
   )

@@ -18,8 +18,14 @@ export function useMessagesState() {
   const timeoutRef = React.useRef<number>()
 
   const debouncedSync = React.useMemo(
-    () => debounce((messages: string[]) => {
-      syncMessages(messages)
+    () => debounce(async (messages: string[]) => {
+      try {
+        await syncMessages(messages)
+      } catch (error) {
+        setMessage(error as string, true)
+        return
+      }
+
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current)
       }

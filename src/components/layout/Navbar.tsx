@@ -48,15 +48,10 @@ export function Navbar() {
 
     try {
       setMessage("Saving changes...")
-      const success = await saveMessages(dataPath, messages)
-      if (success) {
-        setMessage("Changes saved successfully")
-      } else {
-        showAlert("Error", "Failed to save changes")
-      }
+      await saveMessages(dataPath, messages)
+      setMessage("Changes saved successfully")
     } catch (error) {
-      showAlert("Error", "Failed to save changes: " + (error as Error).message)
-      console.error(error)
+      showAlert("Error", (error as Error).message)
     }
   }
 

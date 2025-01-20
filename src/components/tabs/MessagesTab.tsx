@@ -4,10 +4,12 @@ import { useAppState } from "@/hooks/useAppState"
 import { loadMessages } from "@/lib/ff7-data"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageRow } from "./MessageRow"
+import { useStatusBar } from "@/hooks/useStatusBar"
 
 export function MessagesTab() {
   const { messages, loadMessages: setMessages, updateMessage } = useMessagesState()
   const { dataPath, openedTime } = useAppState()
+  const { setMessage } = useStatusBar()
 
   useEffect(() => {
     async function loadMesFile() {
@@ -17,7 +19,7 @@ export function MessagesTab() {
         const loadedMessages = await loadMessages(dataPath)
         setMessages(loadedMessages)
       } catch (error) {
-        console.error("Error loading messages:", error)
+        setMessage(error as Error, true)
       }
     }
 

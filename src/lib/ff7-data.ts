@@ -61,33 +61,25 @@ export async function loadMessages(gamePath: string): Promise<string[]> {
   }
 }
 
-export async function saveMessages(gamePath: string, messages: string[]): Promise<boolean> {
-  try {
-    const lgp = await openWorldLGP(gamePath)
-    const mesData = lgp.getFile("mes")
-    if (!mesData) {
-      console.error("Failed to read mes file")
-      return false
-    }
-
-    const mesFile = new MesFile(mesData)
-    messages.forEach((text, index) => {
-      mesFile.setMessage(index, text)
-    })
-
-    const newData = mesFile.writeMessages()
-    lgp.setFile("mes", newData)
-    
-    // Write the updated LGP archive back to disk
-    const worldLgpPath = `${gamePath}/data/wm/world_us.lgp`
-    const buffer = lgp.writeArchive()
-    await writeFile(worldLgpPath, new Uint8Array(buffer))
-    
-    return true
-  } catch (error) {
-    console.error("Error saving messages:", error)
-    return false
+export async function saveMessages(gamePath: string, messages: string[]): Promise<void> {
+  const lgp = await openWorldLGP(gamePath)
+  const mesData = lgp.getFile("mes")
+  if (!mesData) {
+    throw new Error("Failed to read mes file")
   }
+
+  const mesFile = new MesFile(mesData)
+  messages.forEach((text, index) => {
+    mesFile.setMessage(index, text)
+  })
+
+  const newData = mesFile.writeMessages()
+  lgp.setFile("mes", newData)
+  
+  // Write the updated LGP archive back to disk
+  const worldLgpPath = `${gamePath}/data/wm/world_us.lgp`
+  const buffer = lgp.writeArchive()
+  await writeFile(worldLgpPath, new Uint8Array(buffer))
 } 
 
 export async function syncMessages(messages: string[]) {

@@ -25,7 +25,7 @@ const CHARS = {
         0xE4: '…"',
         0xE6: "⑬",
         0xE7: "\n",
-        0xE8: "{NEW}",
+        0xE8: "{NEWPAGE}",
         0xEA: "{CLOUD}",
         0xEB: "{BARRET}",
         0xEC: "{TIFA}",
@@ -164,7 +164,7 @@ export const encodeText = function(text: string): Uint8Array {
                     if (Object.values(CHARS.FIELD_CONTROL).includes(`{${command}}`)) data.push(0xFE);
                     data.push(code);
                     // Skip extra newline character after NEW command
-                    if (command === 'NEW') {
+                    if (command === 'NEWPAGE') {
                         if (i < text.length && text[i] === '\n') i++;
                     }
                 } else throw Error (`Unknown command ${command} in string: ${text}`)
