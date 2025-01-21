@@ -5,7 +5,7 @@ import { useStatusBar } from "@/hooks/useStatusBar"
 import { useAppState } from "@/hooks/useAppState"
 import { useMessagesState } from "@/hooks/useMessagesState"
 import { open } from "@tauri-apps/plugin-dialog"
-import { validateFF7Directory, saveMessages } from "@/lib/ff7-data"
+import { validateFF7Directory } from "@/lib/ff7-data"
 import { AlertDialog } from "@/components/ui/AlertDialog"
 import {
   Tooltip,
@@ -13,16 +13,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useLgpState } from "@/hooks/useLgpState"
 
 export function Navbar() {
   const { setMessage } = useStatusBar()
-  const { setDataPath, alert, showAlert, hideAlert, opened, dataPath } = useAppState()
-  const { messages } = useMessagesState()
+  const { alert, showAlert, hideAlert, setDataPath } = useAppState()
+  const { saveMessages } = useMessagesState()
+  const { loadLgp, opened } = useLgpState() 
+
+  const clearFocus = () => {
+    document.activeElement instanceof HTMLElement && document.activeElement.blur()
+  }
 
   const handleOpenDirectory = async () => {
     try {
-      // Clear focus from the button to prevent the tooltip from showing
-      document.activeElement instanceof HTMLElement && document.activeElement.blur()
+      clearFocus()
 
       const selected = await open({
         directory: true,
@@ -32,10 +37,11 @@ export function Navbar() {
       
       if (selected) {
         const validation = await validateFF7Directory(selected as string)
-        
+        console.debug("[Navbar] Validating FF7 directory:", validation)
         if (validation.valid) {
           setDataPath(selected as string)
-          setMessage("FF7 data directory loaded successfully")
+          await loadLgp(selected as string)
+          setMessage("world.lgp file loaded successfully")
         } else {
           showAlert("Invalid Directory", validation.error || "Unknown error occurred")
         }
@@ -47,12 +53,9 @@ export function Navbar() {
   }
 
   const handleSave = async () => {
-    if (!dataPath) return
-
     try {
-      setMessage("Saving changes...")
-      await saveMessages(dataPath, messages)
-      setMessage("Changes saved successfully")
+      clearFocus()
+      await saveMessages()
     } catch (error) {
       showAlert("Error", (error as Error).message)
     }
@@ -123,7 +126,7 @@ export function Navbar() {
         <div className="w-px h-6 bg-zinc-800" />
         <TabsList className="bg-transparent border-0">
           <TabsTrigger value="messages">Messages</TabsTrigger>
-          <ComingSoonTab value="map">Map</ComingSoonTab>
+          <TabsTrigger value="map">Map</TabsTrigger>
           <ComingSoonTab value="encounters">Encounters</ComingSoonTab>
           <ComingSoonTab value="scripts">Scripts</ComingSoonTab>
         </TabsList>

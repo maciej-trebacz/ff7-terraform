@@ -1,8 +1,10 @@
 import { atom, useAtom } from 'jotai'
 import { debounce } from 'lodash-es'
-import { syncMessages } from '@/lib/ff7-data'
 import React from 'react'
 import { useStatusBar } from './useStatusBar'
+import { invoke } from "@tauri-apps/api/core"
+import { MesFile } from "@/ff7/mesfile"
+import { useLgpState } from './useLgpState'
 
 interface MessagesState {
   messages: string[]
@@ -15,6 +17,7 @@ const messagesStateAtom = atom<MessagesState>({
 export function useMessagesState() {
   const [state, setState] = useAtom(messagesStateAtom)
   const { setMessage } = useStatusBar()
+  const { getFile, setFile } = useLgpState()
   const timeoutRef = React.useRef<number>()
 
   const debouncedSync = React.useMemo(
@@ -37,11 +40,46 @@ export function useMessagesState() {
     []
   )
 
-  const loadMessages = (messages: string[]) => {
-    setState(prev => ({
-      ...prev,
-      messages
-    }))
+  const loadMessages = async () => {
+    try {
+      console.debug("[Messages] Loading messages")
+      const mesData = await getFile("mes")
+      if (!mesData) {
+        console.error("Failed to read mes file")
+        return
+      }
+
+      const mesFile = new MesFile(mesData)
+      setState(prev => ({
+        ...prev,
+        messages: mesFile.data.messages.map(msg => msg.text)
+      }))
+    } catch (error) {
+      console.error("Error loading messages:", error)
+      setMessage("Failed to load messages: " + (error as Error).message, true)
+    }
+  }
+
+  const saveMessages = async () => {
+    try {
+      console.debug("[Messages] Saving messages")
+      const mesData = await getFile("mes")
+      if (!mesData) {
+        throw new Error("Failed to read mes file")
+      }
+
+      const mesFile = new MesFile(mesData)
+      state.messages.forEach((text, index) => {
+        mesFile.setMessage(index, text)
+      })
+
+      const newData = mesFile.writeMessages()
+      await setFile("mes", newData)
+      setMessage("Messages saved successfully")
+    } catch (error) {
+      console.error("[Messages] Failed to save messages:", error)
+      setMessage("Failed to save messages: " + (error as Error).message, true)
+    }
   }
 
   const updateMessage = (index: number, value: string) => {
@@ -53,6 +91,13 @@ export function useMessagesState() {
         messages: newMessages
       }
     })
+  }
+
+  const syncMessages = async (messages: string[]) => {
+    const mesFile = new MesFile()
+    mesFile.setMessages(messages)
+    const data = mesFile.writeMessages()
+    await invoke("update_mes_data", { data })
   }
 
   React.useEffect(() => {
@@ -67,6 +112,7 @@ export function useMessagesState() {
   return {
     messages: state.messages,
     loadMessages,
+    saveMessages,
     updateMessage
   }
 } 

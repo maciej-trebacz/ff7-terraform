@@ -90,13 +90,13 @@ interface Map {
     sections: Section[];
 }
 
-interface Coords {
+export interface Coords {
     x: number;
     y: number;
     z: number;
 }
 
-interface Triangle {
+export interface Triangle {
     vertex0: Coords;
     vertex1: Coords;
     vertex2: Coords;
@@ -128,7 +128,7 @@ interface RawTriangle {
     vVertex2: number;
 }
 
-interface Mesh {
+export interface Mesh {
     numTriangles: number;
     numVertices: number;
     triangles: Triangle[];
