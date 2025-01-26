@@ -127,6 +127,7 @@ export function Navbar() {
         <TabsList className="bg-transparent border-0">
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="map">Map</TabsTrigger>
+          <TabsTrigger value="textures">Textures</TabsTrigger>
           <ComingSoonTab value="encounters">Encounters</ComingSoonTab>
           <ComingSoonTab value="scripts">Scripts</ComingSoonTab>
         </TabsList>

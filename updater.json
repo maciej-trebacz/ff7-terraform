@@ -1,10 +1,10 @@
 {
-  "version": "0.1.0",
-  "pub_date": "2025-01-20T14:45:00+00:00",
+  "version": "0.2.0",
+  "pub_date": "2025-01-26T10:00:00+00:00",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290Tjk2ME5JWWRTU2taNXh5Qk5ab0MxSll6N0o5QmlUT3E2RWNSVjF5T1pxK0hRdG0vUkY5QjdxUW50ZGFTZU1lWCtJNFlPWWNKaUVkQUkwNzlRT1E2VmdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzM3NDA3NTg1CWZpbGU6RkY3IFRlcnJhZm9ybV8wLjEuMF94NjQtc2V0dXAuZXhlCksxRVJCT2crOGJvYWFTWnd1RWtaWkhLN2s2VEc1dnNyMU5SSExPdHY4L1dTbStoazJ4NCs5VmZ0QWdzMUJtUURNMit3YjRVYTlxWTI5YlRwK1ZMS0FRPT0K",
-      "url": "https://github.com/maciej-trebacz/ff7-terraform/releases/download/0.1.0/FF7.Terraform_0.1.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290TjhOSEpjaHl0Q3hkK0wwVHU0NHVjeFYxZmpKSW9WbTJibGVyMzJWUFFJSm9kcmxQeGM2TE9KeDIwTTEvNERQaUZ2dDZaK2g3aDZpVDJZZFYzSWx1dVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzM3ODgyMzcxCWZpbGU6RkY3IFRlcnJhZm9ybV8wLjIuMF94NjQtc2V0dXAuZXhlClprcHlHSkZoaklTWDdyRU5CN1pyczR0bmJXRnRCRzY5SEJTUXA1MkFTY3dQaHo4M3VNc2VhOCszeFJsNVRONjlxVlBQQkRFelpGYzlxYWlpOGxpRURRPT0K",
+      "url": "https://github.com/maciej-trebacz/ff7-terraform/releases/download/0.2.0/FF7.Terraform_0.2.0_x64-setup.exe"
     }
   }
 }

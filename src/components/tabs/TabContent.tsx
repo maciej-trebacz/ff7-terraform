@@ -3,6 +3,7 @@ import { MapTab } from "./MapTab"
 import { MessagesTab } from "./MessagesTab"
 import { EncountersTab } from "./EncountersTab"
 import { ScriptsTab } from "./ScriptsTab"
+import { TexturesTab } from "./TexturesTab"
 
 export function TabContent() {
   return (
@@ -18,6 +19,9 @@ export function TabContent() {
       </TabsContent>
       <TabsContent value="scripts" className="flex-1 data-[state=active]:flex">
         <ScriptsTab />
+      </TabsContent>
+      <TabsContent value="textures" className="flex-1 data-[state=active]:flex">
+        <TexturesTab />
       </TabsContent>
     </div>
   )
