@@ -16,7 +16,7 @@ function createImageFromTexture(pixels: Uint8Array, width: number, height: numbe
         imageData.data[i] = pixels[i]     // Red (swap with Blue)
         imageData.data[i + 1] = pixels[i + 1] // Green
         imageData.data[i + 2] = pixels[i + 2]     // Blue (swap with Red)
-        imageData.data[i + 3] = 255// pixels[i + 3] // Alpha
+        imageData.data[i + 3] = pixels[i + 3] // Alpha
     }
     ctx.putImageData(imageData, 0, 0)
     return canvas.toDataURL()

@@ -7,8 +7,13 @@ import { useMapState } from '@/hooks/useMapState';
 import { WorldMapTexture } from '@/ff7/texfile';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { PerspectiveCamera } from 'three';
+import { Button } from '@/components/ui/button';
+import { RotateCcw, RotateCw } from 'lucide-react';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { calcUV } from '@/lib/utils';
 
 const SHOW_DEBUG = false;
+const PIXELATED_TEXTURES = false;
 
 type MapType = "overworld" | "underwater" | "glacier";
 type RenderingMode = "terrain" | "textured" | "region" | "scripts";
@@ -87,8 +92,9 @@ function createTextureAtlas(textures: WorldMapTexture[]) {
   canvas.width = ATLAS_SIZE;
   canvas.height = ATLAS_SIZE;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+  
+  // Use transparent black as background
+  ctx.clearRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
 
   // Keep track of texture positions in the atlas
   const texturePositions = new Map<number, { x: number, y: number, name: string }>();
@@ -98,8 +104,8 @@ function createTextureAtlas(textures: WorldMapTexture[]) {
   let currentY = 0;
   let rowHeight = 0;
 
-  // Add 1px padding between textures
-  const PADDING = 1;
+  // Add 4px padding between textures
+  const PADDING = 4;
 
   // For each texture that has been loaded
   let loadedCount = 0;
@@ -124,7 +130,7 @@ function createTextureAtlas(textures: WorldMapTexture[]) {
     // Get the raw pixel data
     const pixels = texture.tex.getPixels();
     
-    // Create an ImageData object
+    // Create an ImageData object with alpha channel
     const imageData = new ImageData(
       new Uint8ClampedArray(pixels.buffer),
       texture.width,
@@ -135,48 +141,70 @@ function createTextureAtlas(textures: WorldMapTexture[]) {
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = texture.width + PADDING * 2;
     tempCanvas.height = texture.height + PADDING * 2;
-    const tempCtx = tempCanvas.getContext('2d')!;
+    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true })!;
+    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
     // Draw the main texture
     tempCtx.putImageData(imageData, PADDING, PADDING);
 
-    // Extend edge pixels to prevent seams
+    // Extend edge pixels to prevent seams while preserving alpha
+    const extendEdgePixels = (sourceX: number, sourceY: number, sourceW: number, sourceH: number,
+                             destX: number, destY: number, destW: number, destH: number) => {
+      // Get source pixel data
+      const sourceData = tempCtx.getImageData(sourceX, sourceY, sourceW, sourceH);
+      const destData = tempCtx.createImageData(destW, destH);
+      
+      // Copy pixels while preserving alpha
+      for (let y = 0; y < destH; y++) {
+        for (let x = 0; x < destW; x++) {
+          const sourceIdx = ((y % sourceH) * sourceW + (x % sourceW)) * 4;
+          const destIdx = (y * destW + x) * 4;
+          destData.data[destIdx] = sourceData.data[sourceIdx];       // R
+          destData.data[destIdx + 1] = sourceData.data[sourceIdx + 1]; // G
+          destData.data[destIdx + 2] = sourceData.data[sourceIdx + 2]; // B
+          destData.data[destIdx + 3] = sourceData.data[sourceIdx + 3]; // A
+        }
+      }
+      
+      tempCtx.putImageData(destData, destX, destY);
+    };
+
     // Top edge
-    tempCtx.drawImage(tempCanvas, 
-      PADDING, PADDING, texture.width, 1,  // source
-      PADDING, 0, texture.width, PADDING   // destination
+    extendEdgePixels(
+      PADDING, PADDING, texture.width, 1,
+      PADDING, 0, texture.width, PADDING
     );
     // Bottom edge
-    tempCtx.drawImage(tempCanvas,
-      PADDING, texture.height + PADDING - 1, texture.width, 1,  // source
-      PADDING, texture.height + PADDING, texture.width, PADDING // destination
+    extendEdgePixels(
+      PADDING, texture.height + PADDING - 1, texture.width, 1,
+      PADDING, texture.height + PADDING, texture.width, PADDING
     );
     // Left edge
-    tempCtx.drawImage(tempCanvas,
-      PADDING, PADDING, 1, texture.height,  // source
-      0, PADDING, PADDING, texture.height   // destination
+    extendEdgePixels(
+      PADDING, PADDING, 1, texture.height,
+      0, PADDING, PADDING, texture.height
     );
     // Right edge
-    tempCtx.drawImage(tempCanvas,
-      texture.width + PADDING - 1, PADDING, 1, texture.height,  // source
-      texture.width + PADDING, PADDING, PADDING, texture.height // destination
+    extendEdgePixels(
+      texture.width + PADDING - 1, PADDING, 1, texture.height,
+      texture.width + PADDING, PADDING, PADDING, texture.height
     );
     // Corners
-    tempCtx.drawImage(tempCanvas,
-      PADDING, PADDING, 1, 1,  // source
-      0, 0, PADDING, PADDING   // top-left
+    extendEdgePixels(
+      PADDING, PADDING, 1, 1,
+      0, 0, PADDING, PADDING
     );
-    tempCtx.drawImage(tempCanvas,
-      texture.width + PADDING - 1, PADDING, 1, 1,  // source
-      texture.width + PADDING, 0, PADDING, PADDING // top-right
+    extendEdgePixels(
+      texture.width + PADDING - 1, PADDING, 1, 1,
+      texture.width + PADDING, 0, PADDING, PADDING
     );
-    tempCtx.drawImage(tempCanvas,
-      PADDING, texture.height + PADDING - 1, 1, 1,  // source
-      0, texture.height + PADDING, PADDING, PADDING // bottom-left
+    extendEdgePixels(
+      PADDING, texture.height + PADDING - 1, 1, 1,
+      0, texture.height + PADDING, PADDING, PADDING
     );
-    tempCtx.drawImage(tempCanvas,
-      texture.width + PADDING - 1, texture.height + PADDING - 1, 1, 1,  // source
-      texture.width + PADDING, texture.height + PADDING, PADDING, PADDING // bottom-right
+    extendEdgePixels(
+      texture.width + PADDING - 1, texture.height + PADDING - 1, 1, 1,
+      texture.width + PADDING, texture.height + PADDING, PADDING, PADDING
     );
 
     // Draw the padded texture onto the atlas
@@ -198,8 +226,10 @@ function createTextureAtlas(textures: WorldMapTexture[]) {
   // Create a Three.js texture from the atlas
   const texture = new THREE.CanvasTexture(canvas);
   texture.flipY = false;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = PIXELATED_TEXTURES ? THREE.NearestFilter : THREE.LinearFilter;
+  texture.minFilter = PIXELATED_TEXTURES ? THREE.NearestFilter : THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = !PIXELATED_TEXTURES;
+  texture.anisotropy = PIXELATED_TEXTURES ? 1 : 16;
   return { texture, canvas, texturePositions };
 }
 
@@ -247,15 +277,22 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
 }) {
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
   const [debugInfo, setDebugInfo] = useState('');
+  const [rotation, setRotation] = useState(0);
   const debugCanvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const cameraRef = useRef<PerspectiveCamera>();
+  const [previousMapType, setPreviousMapType] = useState<MapType | null>(null);
 
   const handleTriangleSelect = (triangle: Triangle | null, faceIndex: number | null) => {
     setSelectedFaceIndex(faceIndex);
     if (onTriangleSelect) {
       onTriangleSelect(triangle);
     }
+  };
+
+  const rotateMap = (direction: 'left' | 'right') => {
+    const rotationAngle = (Math.PI / 4) * (direction === 'left' ? 1 : -1);
+    setRotation(prev => prev + rotationAngle);
   };
 
   // Calculate map center and size
@@ -270,26 +307,62 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
     };
   }, [worldmap]);
 
-  // Recenter camera when map type changes
   useEffect(() => {
-    if (controlsRef.current && mapCenter) {
+    if (controlsRef.current && cameraRef.current && mapCenter && previousMapType !== mapType) {
+      // Recenter camera when map type changes
+      console.debug('[MapViewer] Recenter camera');
       controlsRef.current.target.set(mapCenter.x, mapCenter.y, mapCenter.z);
       controlsRef.current.update();
-    }
-  }, [mapType, mapCenter]);
 
-  // Update camera position when mapCenter changes
-  useEffect(() => {
-    if (cameraRef.current && mapCenter) {
+      // Update camera position when mapCenter changes
       const camera = cameraRef.current as PerspectiveCamera;
       camera.position.set(mapCenter.x, CAMERA_HEIGHT[mapType], mapCenter.z);
       camera.lookAt(mapCenter.x, mapCenter.y, mapCenter.z);
       camera.updateProjectionMatrix();
+      setPreviousMapType(mapType);
     }
-  }, [mapType, mapCenter]);
+  }, [mapType, mapCenter, cameraRef, controlsRef]);
 
   return (
     <div className="relative w-full h-full">
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-background/50 backdrop-blur-sm"
+                onClick={() => rotateMap('left')}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Rotate map left</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-background/50 backdrop-blur-sm"
+                onClick={() => rotateMap('right')}
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Rotate map right</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
       <Canvas
         style={{ width: '100%', height: '100%' }}
         camera={{
@@ -313,7 +386,7 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
         <ambientLight intensity={0.3} />
         <directionalLight
           position={[20000, 40000, 20000]}
-          intensity={renderingMode === "textured" ? 4.0 : 1.0}
+          intensity={1.0}
           castShadow
         />
         {worldmap && (
@@ -326,6 +399,7 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
             debugCanvasRef={debugCanvasRef}
             controlsRef={controlsRef}
             mapCenter={mapCenter}
+            rotation={rotation}
           />
         )}
       </Canvas>
@@ -334,7 +408,7 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
   );
 }
 
-function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, selectedFaceIndex, debugCanvasRef, controlsRef, mapCenter }: { 
+function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, selectedFaceIndex, debugCanvasRef, controlsRef, mapCenter, rotation }: { 
   worldmap: Mesh[][], 
   mapType: MapType,
   renderingMode: RenderingMode,
@@ -342,7 +416,8 @@ function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, sele
   selectedFaceIndex: number | null,
   debugCanvasRef: React.RefObject<HTMLCanvasElement>,
   controlsRef: React.RefObject<OrbitControlsImpl>,
-  mapCenter: { x: number, y: number, z: number }
+  mapCenter: { x: number, y: number, z: number },
+  rotation: number
 }) {
   const [mouseDownPos, setMouseDownPos] = useState<{ x: number; y: number } | null>(null);
   const { textures } = useMapState();
@@ -484,12 +559,12 @@ function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, sele
             const pos = texturePositions.get(tri.texture)!;
             
             // Calculate UVs based on texture position in atlas
-            const u0 = (pos.x + Math.abs(tri.uVertex0 - texture.uOffset) % texture.width) / ATLAS_SIZE;
-            const v0 = (pos.y + Math.abs(tri.vVertex0 - texture.vOffset) % texture.height) / ATLAS_SIZE;
-            const u1 = (pos.x + Math.abs(tri.uVertex1 - texture.uOffset) % texture.width) / ATLAS_SIZE;
-            const v1 = (pos.y + Math.abs(tri.vVertex1 - texture.vOffset) % texture.height) / ATLAS_SIZE;
-            const u2 = (pos.x + Math.abs(tri.uVertex2 - texture.uOffset) % texture.width) / ATLAS_SIZE;
-            const v2 = (pos.y + Math.abs(tri.vVertex2 - texture.vOffset) % texture.height) / ATLAS_SIZE;
+            const u0 = (pos.x + calcUV(tri.uVertex0, texture.uOffset, texture.width)) / ATLAS_SIZE;
+            const v0 = (pos.y + calcUV(tri.vVertex0, texture.vOffset, texture.height)) / ATLAS_SIZE;
+            const u1 = (pos.x + calcUV(tri.uVertex1, texture.uOffset, texture.width)) / ATLAS_SIZE;
+            const v1 = (pos.y + calcUV(tri.vVertex1, texture.vOffset, texture.height)) / ATLAS_SIZE;
+            const u2 = (pos.x + calcUV(tri.uVertex2, texture.uOffset, texture.width)) / ATLAS_SIZE;
+            const v2 = (pos.y + calcUV(tri.vVertex2, texture.vOffset, texture.height)) / ATLAS_SIZE;
 
             uvs[uvOffset] = u0;
             uvs[uvOffset + 1] = v0;
@@ -520,12 +595,13 @@ function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, sele
     const tri = triangleMap[selectedFaceIndex];
     if (!tri) return null;
 
+    const Y_OFFSET = 1; // Small offset to render above the mesh
     const highlightPositions = new Float32Array(9);
     
-    // Copy the transformed vertices directly
-    highlightPositions.set(tri.transformedVertices.v0, 0);
-    highlightPositions.set(tri.transformedVertices.v1, 3);
-    highlightPositions.set(tri.transformedVertices.v2, 6);
+    // Copy the transformed vertices and add Y offset
+    highlightPositions.set([...tri.transformedVertices.v0.slice(0, 1), tri.transformedVertices.v0[1] + Y_OFFSET, ...tri.transformedVertices.v0.slice(2)], 0);
+    highlightPositions.set([...tri.transformedVertices.v1.slice(0, 1), tri.transformedVertices.v1[1] + Y_OFFSET, ...tri.transformedVertices.v1.slice(2)], 3);
+    highlightPositions.set([...tri.transformedVertices.v2.slice(0, 1), tri.transformedVertices.v2[1] + Y_OFFSET, ...tri.transformedVertices.v2.slice(2)], 6);
 
     const selectedGeometry = new THREE.BufferGeometry();
     selectedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(highlightPositions, 3));
@@ -538,29 +614,37 @@ function WorldmapMesh({ worldmap, mapType, renderingMode, onTriangleSelect, sele
 
   return (
     <group>
-      <mesh 
-        geometry={geometry} 
-        onClick={handleClick}
-        onPointerDown={handlePointerDown}
+      <group 
+        position={[mapCenter.x, 0, mapCenter.z]}
+        rotation={[0, rotation, 0]}
       >
-        {renderingMode === "textured" && texture ? (
-          <meshPhongMaterial 
-            map={texture} 
-            side={THREE.DoubleSide}
-            transparent={true}
-            alphaTest={0.5}
-          />
-        ) : (
-          <meshPhongMaterial vertexColors side={THREE.DoubleSide} />
-        )}
-      </mesh>
-      {selectedTriangleGeometry && (
-        <lineSegments>
-          <edgesGeometry attach="geometry" args={[selectedTriangleGeometry]} />
-          <lineBasicMaterial color="#ff00ff" linewidth={2} />
-        </lineSegments>
-      )}
-      <OrbitControls ref={controlsRef} target={[mapCenter.x, mapCenter.y, mapCenter.z]} />
+        <group position={[-mapCenter.x, 0, -mapCenter.z]}>
+          <mesh 
+            geometry={geometry} 
+            onClick={handleClick}
+            onPointerDown={handlePointerDown}
+          >
+            {renderingMode === "textured" && texture ? (
+              <meshBasicMaterial 
+                map={texture} 
+                side={THREE.DoubleSide}
+                transparent={true}
+                alphaTest={0.5}
+                toneMapped={false}
+              />
+            ) : (
+              <meshPhongMaterial vertexColors side={THREE.DoubleSide} />
+            )}
+          </mesh>
+          {selectedTriangleGeometry && (
+            <lineSegments>
+              <edgesGeometry attach="geometry" args={[selectedTriangleGeometry]} />
+              <lineBasicMaterial color="#ff00ff" linewidth={2} />
+            </lineSegments>
+          )}
+          <OrbitControls ref={controlsRef} target={[mapCenter.x, mapCenter.y, mapCenter.z]} />
+        </group>
+      </group>
     </group>
   );
 }

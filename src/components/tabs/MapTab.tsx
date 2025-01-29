@@ -5,6 +5,7 @@ import { useStatusBar } from "@/hooks/useStatusBar";
 import { useEffect, useState } from "react";
 import MapViewer from "./MapViewer";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import React from "react";
+import { UVEditorModal } from "../modals/UVEditorModal";
 
 type MapType = "overworld" | "underwater" | "glacier";
 type MapId = "WM0" | "WM2" | "WM3";
@@ -40,6 +48,7 @@ export function MapTab() {
   const { loadMap, loadTextures, textures } = useMapState();
   const { opened, openedTime } = useAppState();
   const { setMessage } = useStatusBar();
+  const [isUVEditorOpen, setIsUVEditorOpen] = useState(false);
 
   const [worldmap, setWorldmap] = useState<Mesh[][] | null>(null);
   const [selectedTriangle, setSelectedTriangle] = useState<Triangle | null>(null);
@@ -108,6 +117,14 @@ export function MapTab() {
     return data;
   }
 
+  useEffect(() => {
+    if (selectedTriangle) {
+      console.debug("Selected triangle", selectedTriangle);
+      const texture = textures[selectedTriangle.texture];
+      console.debug("Texture", texture);
+    }
+  }, [selectedTriangle]);
+
   return (
     <div className="flex h-full w-full">
       <div className="flex-1">
@@ -154,9 +171,12 @@ export function MapTab() {
           </div>
         </div>
         <Separator className="my-4" />
-        <div>
-          <h3 className="text-sm font-medium">Alternative Sections</h3>
-          <div className="mt-2 space-y-2">
+        <Collapsible>
+          <CollapsibleTrigger className="flex w-full items-center justify-between group">
+            <h3 className="text-sm font-medium">Alternative Sections</h3>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2">
             {ALTERNATIVE_SECTIONS.map((section) => (
               <div key={section.id} className="flex items-center space-x-2">
                 <Checkbox
@@ -178,8 +198,8 @@ export function MapTab() {
                 </label>
               </div>
             ))}
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
         <Separator className="my-4" />
         <div>
           <h3 className="text-sm font-medium">Triangle</h3>
@@ -255,6 +275,14 @@ export function MapTab() {
                         <span className="text-muted-foreground">ID</span>
                         <span className="font-medium">{textures[selectedTriangle.texture]?.name ?? 'Unknown'} ({selectedTriangle.texture})</span>
                       </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Size</span>
+                        <span className="font-medium">{textures[selectedTriangle.texture]?.width ?? '?'}×{textures[selectedTriangle.texture]?.height ?? '?'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">UV Offset</span>
+                        <span className="font-medium">({textures[selectedTriangle.texture]?.uOffset ?? '?'}, {textures[selectedTriangle.texture]?.vOffset ?? '?'})</span>
+                      </div>
                       <div className="grid grid-cols-[1.5rem_repeat(2,1fr)] gap-x-2 text-xs">
                         <div className="text-muted-foreground">#</div>
                         <div className="text-muted-foreground text-right">U</div>
@@ -271,6 +299,14 @@ export function MapTab() {
                           </React.Fragment>
                         ))}
                       </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full mt-2" 
+                        onClick={() => setIsUVEditorOpen(true)}
+                      >
+                        UV Editor
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -283,6 +319,11 @@ export function MapTab() {
           </div>
         </div>
       </div>
+      <UVEditorModal 
+        isOpen={isUVEditorOpen} 
+        setIsOpen={setIsUVEditorOpen} 
+        triangle={selectedTriangle} 
+      />
     </div>
   );
 }

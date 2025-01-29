@@ -323,7 +323,7 @@ export const WORLD_MAP_TEXTURES: WorldMapTexture[] = [
   { id: 261, name: "utaimt", width: 32, height: 32, uOffset: 0, vOffset: 128 },
   { id: 262, name: "utaimtd", width: 32, height: 32, uOffset: 96, vOffset: 96 },
   { id: 263, name: "utaimtg", width: 32, height: 32, uOffset: 96, vOffset: 128 },
-  { id: 264, name: "wa1", width: 32, height: 32, uOffset: 192, vOffset: 320 },
+  { id: 264, name: "wa1", width: 32, height: 32, uOffset: 192, vOffset: 320, animated: true, frames: 8 },
   { id: 265, name: "wzs1", width: 32, height: 32, uOffset: 128, vOffset: 288 },
   { id: 266, name: "wzshr", width: 32, height: 32, uOffset: 160, vOffset: 32 },
   { id: 267, name: "wzshr2", width: 32, height: 32, uOffset: 32, vOffset: 128 },

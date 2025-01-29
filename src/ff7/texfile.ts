@@ -8,6 +8,8 @@ export interface WorldMapTexture {
     uOffset: number;
     vOffset: number;
     tex?: TexFile;
+    animated?: boolean;
+    frames?: number;
 }
 
 interface PixelFormat {

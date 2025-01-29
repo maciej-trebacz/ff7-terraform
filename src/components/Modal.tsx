@@ -14,7 +14,7 @@ export function Modal(props: {
   title: string;
   children: React.ReactNode;
   buttonText?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   callback: () => void;
   buttonDisabled?: boolean;
 }) {
@@ -22,6 +22,7 @@ export function Modal(props: {
     sm: 'max-w-[300px]',
     md: 'max-w-[400px]',
     lg: 'max-w-[500px]',
+    xl: 'max-w-[650px]',
   };
   return (
     <Dialog open={props.open} onOpenChange={props.setIsOpen}>
