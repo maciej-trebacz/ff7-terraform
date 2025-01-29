@@ -125,9 +125,9 @@ export function Navbar() {
         </div>
         <div className="w-px h-6 bg-zinc-800" />
         <TabsList className="bg-transparent border-0">
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="map">Map</TabsTrigger>
-          <TabsTrigger value="textures">Textures</TabsTrigger>
+          <TabsTrigger value="messages" disabled={!opened}>Messages</TabsTrigger>
+          <TabsTrigger value="map" disabled={!opened}>Map</TabsTrigger>
+          <TabsTrigger value="textures" disabled={!opened}>Textures</TabsTrigger>
           <ComingSoonTab value="encounters">Encounters</ComingSoonTab>
           <ComingSoonTab value="scripts">Scripts</ComingSoonTab>
         </TabsList>

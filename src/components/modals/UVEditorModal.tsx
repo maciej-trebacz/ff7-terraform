@@ -11,6 +11,7 @@ interface UVEditorModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   triangle: Triangle | null;
+  onSave: (uvCoords: { u: number, v: number }[]) => void;
 }
 
 const CANVAS_SIZE = 384;
@@ -33,12 +34,13 @@ function createImageFromTexture(pixels: Uint8Array, width: number, height: numbe
   return canvas.toDataURL();
 }
 
-export function UVEditorModal({ isOpen, setIsOpen, triangle }: UVEditorModalProps) {
+export function UVEditorModal({ isOpen, setIsOpen, triangle, onSave }: UVEditorModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { textures } = useMapState();
   const [selectedVertex, setSelectedVertex] = useState<number | null>(null);
   const [uvCoords, setUvCoords] = useState<{ u: number, v: number }[]>([]);
   const [textureImage, setTextureImage] = useState<HTMLImageElement | null>(null);
+  const [copiedUVs, setCopiedUVs] = useState<{ u: number, v: number }[] | null>(null);
 
   useEffect(() => {
     if (!isOpen || !triangle) {
@@ -244,9 +246,27 @@ export function UVEditorModal({ isOpen, setIsOpen, triangle }: UVEditorModalProp
                 ))}
               </div>
             </div>
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-stretch space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setCopiedUVs(uvCoords)}
+              >
+                Copy UVs
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => copiedUVs && setUvCoords(copiedUVs)}
+                disabled={!copiedUVs}
+              >
+                Paste UVs
+              </Button>
+            </div>
+            <div className="flex space-x-2">
               <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button>Apply Changes</Button>
+              <Button onClick={() => {
+                onSave(uvCoords);
+                setIsOpen(false);
+              }}>Apply Changes</Button>
             </div>
           </div>
         </div>

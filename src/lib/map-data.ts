@@ -45,7 +45,7 @@ export const TRIANGLE_TYPES: Record<number, { type: string; description: string 
   18: { type: 'Sub Pen', description: 'Only place where you can enter/exit the submarine.' },
   19: { type: 'Canyon', description: 'The ground in cosmo canyon has this type, walkability seems to be the same as wasteland.' },
   20: { type: 'Mountain Pass', description: 'The small path through the mountains connecting Costa del Sol and Corel.' },
-  21: { type: 'Unknown', description: 'Present around bridges and the Northern Crater, may have some special meaning.' },
+  21: { type: 'Unknown (21)', description: 'Present around bridges and the Northern Crater, may have some special meaning.' },
   22: { type: 'Waterfall', description: "River type where the tiny bronco can't go." },
   23: { type: 'Unused', description: "Doesn't seem to be used anywhere in the original data." },
   24: { type: 'Gold Saucer Desert', description: 'Special desert type for the golden saucer.' },
@@ -58,7 +58,7 @@ export const TRIANGLE_TYPES: Record<number, { type: string; description: string 
   31: { type: 'Unused', description: "Doesn't seem to be used anywhere in the original data." }
 }; 
 
-export const WORLD_MAP_TEXTURES: WorldMapTexture[] = [
+export const WORLD_MAP_OVERWORLD_TEXTURES: WorldMapTexture[] = [
   { id: 0, name: "pond", width: 32, height: 32, uOffset: 0, vOffset: 352 },
   { id: 1, name: "riv_m2", width: 32, height: 32, uOffset: 128, vOffset: 64 },
   { id: 2, name: "was_gs", width: 64, height: 64, uOffset: 64, vOffset: 192 },
@@ -323,7 +323,7 @@ export const WORLD_MAP_TEXTURES: WorldMapTexture[] = [
   { id: 261, name: "utaimt", width: 32, height: 32, uOffset: 0, vOffset: 128 },
   { id: 262, name: "utaimtd", width: 32, height: 32, uOffset: 96, vOffset: 96 },
   { id: 263, name: "utaimtg", width: 32, height: 32, uOffset: 96, vOffset: 128 },
-  { id: 264, name: "wa1", width: 32, height: 32, uOffset: 192, vOffset: 320, animated: true, frames: 8 },
+  { id: 264, name: "wa1", width: 32, height: 32, uOffset: 192, vOffset: 320 },
   { id: 265, name: "wzs1", width: 32, height: 32, uOffset: 128, vOffset: 288 },
   { id: 266, name: "wzshr", width: 32, height: 32, uOffset: 160, vOffset: 32 },
   { id: 267, name: "wzshr2", width: 32, height: 32, uOffset: 32, vOffset: 128 },
@@ -341,4 +341,23 @@ export const WORLD_MAP_TEXTURES: WorldMapTexture[] = [
   { id: 279, name: "wood", width: 64, height: 64, uOffset: 192, vOffset: 0 },
   { id: 280, name: "wood_d", width: 64, height: 64, uOffset: 192, vOffset: 160 },
   { id: 281, name: "wtrk", width: 32, height: 64, uOffset: 64, vOffset: 96 }
+];
+
+export const WORLD_MAP_UNDERWATER_TEXTURES: WorldMapTexture[] = [
+  { id: 0, name: "cltr", width: 128, height: 128, uOffset: 0, vOffset: 0 },
+  { id: 1, name: "lake_a", width: 128, height: 256, uOffset: 0, vOffset: 0 },
+  { id: 2, name: "rock", width: 256, height: 256, uOffset: 0, vOffset: 0 },
+  { id: 3, name: "scave", width: 256, height: 256, uOffset: 0, vOffset: 0 },
+  { id: 4, name: "ssand", width: 256, height: 256, uOffset: 0, vOffset: 0 },
+  { id: 5, name: "swall02", width: 256, height: 256, uOffset: 0, vOffset: 0 },
+  { id: 6, name: "sng01", width: 128, height: 128, uOffset: 128, vOffset: 0 },
+  { id: 7, name: "sng02", width: 128, height: 128, uOffset: 128, vOffset: 0 },
+
+];
+
+export const WORLD_MAP_GLACIER_TEXTURES: WorldMapTexture[] = [
+  { id: 0, name: "hokola01", width: 64, height: 64, uOffset: 0, vOffset: 0 },
+  { id: 1, name: "hokola02", width: 64, height: 64, uOffset: 0, vOffset: 128 },
+  { id: 2, name: "snwfldl", width: 64, height: 64, uOffset: 0, vOffset: 32 },
+  { id: 3, name: "snwfld2", width: 64, height: 64, uOffset: 0, vOffset: 192 },
 ];

@@ -4,18 +4,21 @@ import { useAppState } from './useAppState'
 import { MapFile } from '@/ff7/mapfile'
 import { TexFile, WorldMapTexture } from '@/ff7/texfile'
 import { useLgpState } from './useLgpState'
-import { WORLD_MAP_TEXTURES } from '@/lib/map-data'
+import { WORLD_MAP_GLACIER_TEXTURES, WORLD_MAP_OVERWORLD_TEXTURES, WORLD_MAP_UNDERWATER_TEXTURES } from '@/lib/map-data'
 
 export type MapId = 'WM0' | 'WM2' | 'WM3'
+export type MapType = 'overworld' | 'underwater' | 'glacier'
 
 interface MapState {
   mapId: MapId | null
+  mapType: MapType
   map: MapFile | null
   textures: WorldMapTexture[]
 }
 
 const mapStateAtom = atom<MapState>({
   mapId: null,
+  mapType: 'overworld',
   map: null,
   textures: []
 })
@@ -28,9 +31,20 @@ export function useMapState() {
   const { dataPath } = useAppState()
   const { getFile } = useLgpState()
 
-  const loadTextures = async () => {
-    console.debug("[Map] Loading textures")
-    const textures = WORLD_MAP_TEXTURES.map(texture => ({ ...texture, tex: null }));
+  const getTexturesForMapType = (mapType: MapType): WorldMapTexture[] => {
+    switch (mapType) {
+      case 'underwater':
+        return WORLD_MAP_UNDERWATER_TEXTURES;
+      case 'glacier':
+        return WORLD_MAP_GLACIER_TEXTURES;
+      default:
+        return WORLD_MAP_OVERWORLD_TEXTURES;
+    }
+  }
+
+  const loadTextures = async (mapType: MapType) => {
+    console.debug("[Map] Loading textures for", mapType)
+    const textures = getTexturesForMapType(mapType).map(texture => ({ ...texture, tex: null }));
 
     // Load textures in parallel
     const loadPromises = textures.map(async texture => {
@@ -39,7 +53,6 @@ export function useMapState() {
         const fileData = await getFile(filename)
         if (fileData) {
           texture.tex = new TexFile(fileData)
-          console.log(`[Map] Loaded texture: ${filename}`)
         } else {
           console.warn(`[Map] Failed to load texture: ${filename}`)
         }
@@ -51,11 +64,11 @@ export function useMapState() {
     await Promise.all(loadPromises);
     console.log(`[Map] Loaded ${textures.filter(t => t.tex !== null).length}/${textures.length} textures`)
 
-    setState(prev => ({ ...prev, textures }))
+    setState(prev => ({ ...prev, textures, mapType }))
     return textures
   }
 
-  const loadMap = async (mapId: MapId) => {
+  const loadMap = async (mapId: MapId, mapType: MapType) => {
     console.debug("[Map] Loading map:", mapId)
     const path = `${dataPath}/data/wm/${mapId}.MAP`
     const fileData = await readFile(path)
@@ -66,12 +79,13 @@ export function useMapState() {
 
     const mapData = new MapFile(fileData)
 
-    setState(prev => ({ ...prev, mapId: mapId, map: mapData }))
+    setState(prev => ({ ...prev, mapId, mapType, map: mapData }))
     return mapData
   }
 
   return {
     mapId: state.mapId,
+    mapType: state.mapType,
     map: state.map,
     textures: state.textures,
     loadMap,

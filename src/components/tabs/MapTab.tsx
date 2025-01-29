@@ -1,9 +1,9 @@
 import { MapFile, Mesh, Triangle } from "@/ff7/mapfile";
 import { useAppState } from "@/hooks/useAppState";
-import { useMapState } from "@/hooks/useMapState";
+import { MapType, useMapState } from "@/hooks/useMapState";
 import { useStatusBar } from "@/hooks/useStatusBar";
 import { useEffect, useState } from "react";
-import MapViewer from "./MapViewer";
+import MapViewer from "../map/MapViewer";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,6 @@ import { ChevronDown } from "lucide-react";
 import React from "react";
 import { UVEditorModal } from "../modals/UVEditorModal";
 
-type MapType = "overworld" | "underwater" | "glacier";
 type MapId = "WM0" | "WM2" | "WM3";
 type RenderingMode = "terrain" | "textured" | "region" | "scripts";
 
@@ -55,14 +54,15 @@ export function MapTab() {
   const [mapType, setMapType] = useState<MapType>("overworld");
   const [renderingMode, setRenderingMode] = useState<RenderingMode>("terrain");
   const [enabledAlternatives, setEnabledAlternatives] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
       if (!opened) return;
       try {
-        console.log('[MapTab] Loading textures...');
-        await loadTextures();
-        console.log('[MapTab] Textures loaded');
+        setIsLoading(true);
+        setWorldmap(null); // Reset the worldmap immediately when loading starts
+        setSelectedTriangle(null); // Reset selected triangle
 
         const mapId: Record<MapType, MapId> = {
           overworld: "WM0",
@@ -70,12 +70,15 @@ export function MapTab() {
           glacier: "WM3"
         };
         
-        console.log('[MapTab] Loading map...');
-        const rawMapData = await loadMap(mapId[mapType]);
+        console.log('[MapTab] Loading map and textures for', mapType);
+        await loadTextures(mapType);
+        const rawMapData = await loadMap(mapId[mapType], mapType);
         console.log(`[MapTab] Loaded ${mapType} map:`, rawMapData);
         setWorldmap(parseWorldmap(rawMapData));
       } catch (error) {
         setMessage(error as string, true);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -133,6 +136,7 @@ export function MapTab() {
           mapType={mapType} 
           renderingMode={renderingMode} 
           onTriangleSelect={setSelectedTriangle}
+          isLoading={isLoading}
         />
       </div>
       <div className="w-64 border-l bg-background p-4">
@@ -322,7 +326,19 @@ export function MapTab() {
       <UVEditorModal 
         isOpen={isUVEditorOpen} 
         setIsOpen={setIsUVEditorOpen} 
-        triangle={selectedTriangle} 
+        triangle={selectedTriangle}
+        onSave={(uvCoords) => {
+          if (selectedTriangle) {
+            (window as any).updateTriangleUVs(
+              uvCoords[0].u,
+              uvCoords[0].v,
+              uvCoords[1].u,
+              uvCoords[1].v,
+              uvCoords[2].u,
+              uvCoords[2].v
+            );
+          }
+        }}
       />
     </div>
   );
