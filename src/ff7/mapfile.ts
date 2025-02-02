@@ -97,6 +97,7 @@ export interface Coords {
 }
 
 export interface Triangle {
+    index: number;
     vertex0: Coords;
     vertex1: Coords;
     vertex2: Coords;
@@ -151,7 +152,8 @@ export class MapFile {
 
         return { 
             ...mesh, 
-            triangles: mesh.triangles.map((triangle: RawTriangle) => ({
+            triangles: mesh.triangles.map((triangle: RawTriangle, idx: number) => ({
+                index: idx,
                 vertex0Idx: triangle.vertex0Index,
                 vertex1Idx: triangle.vertex1Index,
                 vertex2Idx: triangle.vertex2Index,
@@ -283,12 +285,13 @@ export class MapFile {
         const out = new Uint8Array(numSections * 0xB800);
         let pos = 0;
 
-        for (let y = 0; y < 9; y++) {
-            for (let x = 0; x < 7; x++) {
+        for (let y = 0; y < 7; y++) {
+            for (let x = 0; x < 9; x++) {
                 for (let i = 0; i < 2; i++) {
                     for (let j = 0; j < 2; j++) {
-                        const sectionId = (y + i) % 7 * 9 + (x + j) % 9;
+                        const sectionId = (y + i) % 7 * 9 + (x + j) % 9
                         const section = this.map.sections[sectionId]
+                        console.log("Writing section", sectionId)
                         pos = this.writeSection(section, out, pos);
                     }
                 }
@@ -301,5 +304,28 @@ export class MapFile {
 
         // Return the Uint8Array instead of writing to file
         return out;
+    }
+
+    readBot(botData: Uint8Array) {
+        const sectionSize = 0xB800;
+        const numSections = Math.floor(botData.length / sectionSize);
+        const hashes: string[] = [];
+
+        for (let i = 0; i < numSections; i++) {
+            const sectionStart = i * sectionSize;
+            const sectionEnd = sectionStart + sectionSize;
+            const section = botData.slice(sectionStart, sectionEnd);
+            
+            // Create hash using TextEncoder and crypto.subtle
+            const hashBuffer = new Uint8Array(section).reduce(
+                (hash, byte) => ((hash << 5) - hash + byte) | 0, 0
+            );
+            
+            // Convert to hex and take first 4 characters
+            const hashHex = Math.abs(hashBuffer).toString(16).padStart(8, '0');
+            hashes.push(hashHex.substring(0, 4));
+        }
+
+        console.log("Hashes", hashes);
     }
 }

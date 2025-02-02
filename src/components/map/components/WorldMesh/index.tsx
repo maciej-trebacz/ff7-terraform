@@ -1,22 +1,36 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
+import { useTextureAtlas } from './hooks';
+import { useGeometry } from './hooks';
+import { useSelectedTriangleGeometry } from './hooks';
+import { RenderingMode } from '../../types';
+import { Triangle } from '@/ff7/mapfile';
 import { useMapState } from '@/hooks/useMapState';
-import { WorldMeshProps } from '../../types';
-import { useGeometry, useSelectedTriangleGeometry, useTextureAtlas } from './hooks';
+import { MESH_SIZE } from '../../constants';
+import { GridOverlay } from '../GridOverlay';
+
+interface WorldMeshProps {
+  renderingMode: RenderingMode;
+  onTriangleSelect: (triangle: Triangle | null, faceIndex: number | null) => void;
+  selectedFaceIndex: number | null;
+  debugCanvasRef: React.RefObject<HTMLCanvasElement>;
+  mapCenter: { x: number; y: number; z: number };
+  rotation: number;
+  showGrid?: boolean;
+}
 
 export function WorldMesh({ 
-  worldmap, 
-  mapType, 
   renderingMode, 
   onTriangleSelect, 
   selectedFaceIndex,
   debugCanvasRef,
   mapCenter,
-  rotation
+  rotation,
+  showGrid = false
 }: WorldMeshProps) {
   const [mouseDownPos, setMouseDownPos] = useState<{ x: number; y: number } | null>(null);
-  const { textures } = useMapState();
+  const { textures, worldmap, mapType, addChangedMesh } = useMapState();
   
   const { texture, canvas, texturePositions } = useTextureAtlas(textures, mapType);
   const { geometry, triangleMap, updateTriangleUVs, updateTrianglePosition } = useGeometry(worldmap, mapType, renderingMode, textures, texturePositions);
@@ -25,10 +39,11 @@ export function WorldMesh({
   const selectedTriangle = triangleMap?.[selectedFaceIndex];
 
   // Set up global update functions when selected triangle changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (window && selectedTriangle && updateTriangleUVs && updateTrianglePosition) {
       (window as any).updateTriangleUVs = function(u0: number, v0: number, u1: number, v1: number, u2: number, v2: number) {
         updateTriangleUVs(selectedTriangle, u0, v0, u1, v1, u2, v2);
+        addChangedMesh(selectedTriangle.meshOffsetZ / MESH_SIZE, selectedTriangle.meshOffsetX / MESH_SIZE);
       };
       (window as any).updateTrianglePosition = function(
         v0: [number, number, number],
@@ -36,6 +51,7 @@ export function WorldMesh({
         v2: [number, number, number]
       ) {
         updateTrianglePosition(selectedTriangle, v0, v1, v2);
+        addChangedMesh(selectedTriangle.meshOffsetZ / MESH_SIZE, selectedTriangle.meshOffsetX / MESH_SIZE);
       }
     }
     
@@ -47,7 +63,7 @@ export function WorldMesh({
   }, [selectedTriangle, updateTriangleUVs, updateTrianglePosition]);
 
   // Copy the texture atlas to the debug canvas
-  React.useEffect(() => {
+  useEffect(() => {
     if (debugCanvasRef.current && canvas) {
       const ctx = debugCanvasRef.current.getContext('2d');
       if (ctx) {
@@ -58,11 +74,12 @@ export function WorldMesh({
   }, [canvas, debugCanvasRef]);
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    if (showGrid) return;
     setMouseDownPos({ x: event.clientX, y: event.clientY });
   };
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    if (!mouseDownPos) return;
+    if (showGrid || !mouseDownPos || !onTriangleSelect) return;
 
     // Check if mouse moved more than 5 pixels in any direction
     const dx = Math.abs(event.clientX - mouseDownPos.x);
@@ -71,8 +88,9 @@ export function WorldMesh({
 
     setMouseDownPos(null);
 
-    if (!isDrag && triangleMap && event.faceIndex !== undefined && onTriangleSelect) {
+    if (!isDrag && triangleMap && event.faceIndex !== undefined) {
       const selectedTriangle = triangleMap[event.faceIndex];
+      (window as any).selectedTriangle = selectedTriangle;
       onTriangleSelect(selectedTriangle, event.faceIndex);
     }
   };
@@ -88,8 +106,8 @@ export function WorldMesh({
         <group position={[-mapCenter.x, 0, -mapCenter.z]}>
           <mesh 
             geometry={geometry} 
-            onClick={handleClick}
             onPointerDown={handlePointerDown}
+            onClick={handleClick}
           >
             {renderingMode === "textured" && texture ? (
               <meshBasicMaterial 
@@ -103,11 +121,17 @@ export function WorldMesh({
               <meshPhongMaterial vertexColors side={THREE.DoubleSide} />
             )}
           </mesh>
-          {selectedTriangleGeometry && (
+          {!showGrid && onTriangleSelect && selectedTriangleGeometry && (
             <lineSegments>
               <edgesGeometry attach="geometry" args={[selectedTriangleGeometry]} />
-              <lineBasicMaterial color="#ff00ff" linewidth={2} />
+              <lineBasicMaterial color="#ff00ff" linewidth={2} depthTest={false} />
             </lineSegments>
+          )}
+          {showGrid && (
+            <GridOverlay 
+              worldmapLength={worldmap.length} 
+              worldmapWidth={worldmap[0].length} 
+            />
           )}
         </group>
       </group>

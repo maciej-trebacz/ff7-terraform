@@ -35,11 +35,11 @@ export function useGeometry(
 ) {
   const geometryRef = useRef<THREE.BufferGeometry | null>(null);
   const triangleMapRef = useRef<TriangleWithVertices[] | null>(null);
+  // New ref to track mapping from vertex ID to positions buffer offsets.
+  const vertexOffsetsRef = useRef<Map<number, number[]> | null>(null);
 
   const result = useMemo(() => {
     if (!worldmap || !worldmap.length) return { geometry: null, triangleMap: null };
-
-    console.log(`[MapViewer] Creating geometry for ${worldmap.length}x${worldmap[0].length} worldmap`);
 
     let totalTris = 0;
     for (const row of worldmap) {
@@ -48,18 +48,27 @@ export function useGeometry(
       }
     }
 
+    // Allocate buffers (positions, colors, uvs) as before.
     const positions = new Float32Array(totalTris * 3 * 3);
     const colors = new Float32Array(totalTris * 3 * 3);
     const uvs = new Float32Array(totalTris * 3 * 2);
+
     const triangleMap: TriangleWithVertices[] = [];
 
     let offset = 0;
     let uvOffset = 0;
+    let triangleIndex = 0;
+
+    // For shared vertices, assign a unique ID and record where in the positions buffer they are written.
+    let vertexIdCounter = 0;
+    const uniqueVertexMap = new Map<string, number>(); // key -> vertexId
+    const vertexIdToOffsets = new Map<number, number[]>(); // vertexId -> [offsets]
 
     const terrainColorMap = LOCATION_COLORS[mapType];
     const regionColorMap = REGION_COLORS[mapType];
     const defaultColor = new THREE.Color('#444');
 
+    // Process each mesh and its triangles
     for (let row = 0; row < worldmap.length; row++) {
       for (let col = 0; col < worldmap[row].length; col++) {
         const mesh = worldmap[row][col];
@@ -74,7 +83,6 @@ export function useGeometry(
           };
 
           let color: THREE.Color;
-          
           if (renderingMode === "region") {
             const regionIdx = tri.locationId % 32;
             const colorHex = regionColorMap[regionIdx];
@@ -94,38 +102,49 @@ export function useGeometry(
             color = new THREE.Color('#fff');
           }
 
-          function setPosColor(v: { x: number, y: number, z: number }, vertexIndex: 0 | 1 | 2) {
+          // Updated helper: write the vertex, assign a unique vertexId, and record its offset.
+          function setPosColor(v: { x: number, y: number, z: number }, vertexIndex: 0 | 1 | 2): number {
             const x = (v.x + offsetX) * SCALE;
             const y = v.y * SCALE;
             const z = (v.z + offsetZ) * SCALE;
 
-            positions[offset] = x;
-            positions[offset+1] = y;
-            positions[offset+2] = z;
+            // Use a key based on the absolute position (rounded to avoid floating point issues)
+            const key = `${Math.round(x * 1000) / 1000},${Math.round(y * 1000) / 1000},${Math.round(z * 1000) / 1000}`;
+            let vertexId: number;
+            if (uniqueVertexMap.has(key)) {
+              vertexId = uniqueVertexMap.get(key)!;
+            } else {
+              vertexId = vertexIdCounter++;
+              uniqueVertexMap.set(key, vertexId);
+              vertexIdToOffsets.set(vertexId, []);
+            }
+            // Record this occurrence (offset in the positions array) for the vertexId.
+            vertexIdToOffsets.get(vertexId)!.push(offset);
 
+            // Write position and color into buffers.
+            positions[offset] = x;
+            positions[offset + 1] = y;
+            positions[offset + 2] = z;
             colors[offset] = color.r;
             colors[offset + 1] = color.g;
             colors[offset + 2] = color.b;
 
-            // Store transformed vertices
-            const vertexKey = `v${vertexIndex}` as keyof typeof transformedVertices;
-            transformedVertices[vertexKey] = [x, y, z] as [number, number, number];
-
+            // Save transformed vertex.
+            transformedVertices[`v${vertexIndex}`] = [x, y, z];
             offset += 3;
+            return vertexId;
           }
 
-          setPosColor(tri.vertex0, 0);
-          setPosColor(tri.vertex1, 1);
-          setPosColor(tri.vertex2, 2);
+          // Process each vertex of the triangle and get its unique ID.
+          const vertexId0 = setPosColor(tri.vertex0, 0);
+          const vertexId1 = setPosColor(tri.vertex1, 1);
+          const vertexId2 = setPosColor(tri.vertex2, 2);
 
-          // Add UV coordinates for textured mode
+          // UV calculation for textured mode
           const texture = textures[tri.texture];
-
           const isUnderwaterOutside = texture?.name.includes("cltr") && tri.uVertex0 === 254;
           if (texture && texturePositions.has(tri.texture) && !isUnderwaterOutside) {
             const pos = texturePositions.get(tri.texture)!;
-
-            // Calculate UVs based on texture position in atlas
             const u0 = (pos.x + calcUV(tri.uVertex0, texture.uOffset, texture.width)) / ATLAS_SIZE;
             const v0 = (pos.y + calcUV(tri.vVertex0, texture.vOffset, texture.height)) / ATLAS_SIZE;
             const u1 = (pos.x + calcUV(tri.uVertex1, texture.uOffset, texture.width)) / ATLAS_SIZE;
@@ -142,15 +161,22 @@ export function useGeometry(
           }
           uvOffset += 6;
 
+          // Save the triangle along with the unique vertex IDs.
           triangleMap.push({ 
             ...tri, 
             transformedVertices,
             meshOffsetX: offsetX,
-            meshOffsetZ: offsetZ
+            meshOffsetZ: offsetZ,
+            vertexIds: [vertexId0, vertexId1, vertexId2],
+            trianglePtr: mesh.triangles[tri.index]
           });
+          triangleIndex++;
         }
       }
     }
+
+    // Save the mapping from vertex IDs to geometry offsets.
+    vertexOffsetsRef.current = vertexIdToOffsets;
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -204,48 +230,69 @@ export function useGeometry(
     uvs[uvOffset + 4] = u2;
     uvs[uvOffset + 5] = v2;
 
+    // Update the underlying triangle data using trianglePtr
+    triangle.trianglePtr.uVertex0 = uVertex0;
+    triangle.trianglePtr.vVertex0 = vVertex0;
+    triangle.trianglePtr.uVertex1 = uVertex1;
+    triangle.trianglePtr.vVertex1 = vVertex1;
+    triangle.trianglePtr.uVertex2 = uVertex2;
+    triangle.trianglePtr.vVertex2 = vVertex2;
+
+    // Update the triangle in triangleMap
+    triangle.uVertex0 = uVertex0;
+    triangle.vVertex0 = vVertex0;
+    triangle.uVertex1 = uVertex1;
+    triangle.vVertex1 = vVertex1;
+    triangle.uVertex2 = uVertex2;
+    triangle.vVertex2 = vVertex2;
+
     uvAttribute.needsUpdate = true;
   }, [textures, texturePositions]);
 
+  // Updated updateTrianglePosition using unique vertex IDs.
   const updateTrianglePosition = useCallback((
     triangle: TriangleWithVertices,
     vertex0: [number, number, number],
     vertex1: [number, number, number],
     vertex2: [number, number, number]
   ) => {
-    if (!geometryRef.current || !triangleMapRef.current) return;
-
-    const triangleId = triangleMapRef.current.findIndex(t => t === triangle);
-    if (triangleId === -1) return;
+    if (!geometryRef.current || !triangleMapRef.current || !vertexOffsetsRef.current) return;
 
     const positionAttribute = geometryRef.current.getAttribute('position') as THREE.BufferAttribute;
     const positions = positionAttribute.array as Float32Array;
+    const newVertices = [vertex0, vertex1, vertex2];
 
-    // Each triangle takes up 9 position values (3 vertices * 3 coordinates)
-    const posOffset = triangleId * 9;
+    // For each vertex in the triangle, use its unique ID to update every occurrence.
+    triangle.vertexIds.forEach((vertexId, i) => {
+      const offsets = vertexOffsetsRef.current!.get(vertexId);
+      if (!offsets) return;
+      const newX = (newVertices[i][0] + triangle.meshOffsetX) * SCALE;
+      const newY = newVertices[i][1] * SCALE;
+      const newZ = (newVertices[i][2] + triangle.meshOffsetZ) * SCALE;
+      offsets.forEach((posOffset) => {
+        positions[posOffset] = newX;
+        positions[posOffset + 1] = newY;
+        positions[posOffset + 2] = newZ;
+      });
+      // Update the cached transformed vertices.
+      triangle.transformedVertices[`v${i}`] = [newX, newY, newZ];
+    });
 
-    // Calculate positions using the same logic as setPosColor
-    const [x0, y0, z0] = vertex0;
-    const [x1, y1, z1] = vertex1;
-    const [x2, y2, z2] = vertex2;
+    // Update the underlying triangle data using trianglePtr
+    triangle.trianglePtr.vertex0.x = vertex0[0];
+    triangle.trianglePtr.vertex0.y = vertex0[1];
+    triangle.trianglePtr.vertex0.z = vertex0[2];
+    triangle.trianglePtr.vertex1.x = vertex1[0];
+    triangle.trianglePtr.vertex1.y = vertex1[1];
+    triangle.trianglePtr.vertex1.z = vertex1[2];
+    triangle.trianglePtr.vertex2.x = vertex2[0];
+    triangle.trianglePtr.vertex2.y = vertex2[1];
+    triangle.trianglePtr.vertex2.z = vertex2[2];
 
-    // Update positions with mesh offsets
-    positions[posOffset] = (x0 + triangle.meshOffsetX) * SCALE;
-    positions[posOffset + 1] = y0 * SCALE;
-    positions[posOffset + 2] = (z0 + triangle.meshOffsetZ) * SCALE;
-    positions[posOffset + 3] = (x1 + triangle.meshOffsetX) * SCALE;
-    positions[posOffset + 4] = y1 * SCALE;
-    positions[posOffset + 5] = (z1 + triangle.meshOffsetZ) * SCALE;
-    positions[posOffset + 6] = (x2 + triangle.meshOffsetX) * SCALE;
-    positions[posOffset + 7] = y2 * SCALE;
-    positions[posOffset + 8] = (z2 + triangle.meshOffsetZ) * SCALE;
-
-    // Update the transformed vertices in the triangle map
-    triangle.transformedVertices = {
-      v0: [(x0 + triangle.meshOffsetX) * SCALE, y0 * SCALE, (z0 + triangle.meshOffsetZ) * SCALE],
-      v1: [(x1 + triangle.meshOffsetX) * SCALE, y1 * SCALE, (z1 + triangle.meshOffsetZ) * SCALE],
-      v2: [(x2 + triangle.meshOffsetX) * SCALE, y2 * SCALE, (z2 + triangle.meshOffsetZ) * SCALE]
-    };
+    // Update the triangle in triangleMap
+    triangle.vertex0 = { x: vertex0[0], y: vertex0[1], z: vertex0[2] };
+    triangle.vertex1 = { x: vertex1[0], y: vertex1[1], z: vertex1[2] };
+    triangle.vertex2 = { x: vertex2[0], y: vertex2[1], z: vertex2[2] };
 
     positionAttribute.needsUpdate = true;
     geometryRef.current.computeVertexNormals();
@@ -254,24 +301,23 @@ export function useGeometry(
   return { ...result, updateTriangleUVs, updateTrianglePosition };
 }
 
+
 export function useSelectedTriangleGeometry(triangleMap: TriangleWithVertices[] | null, selectedFaceIndex: number | null) {
-  return useMemo(() => {
-    if (!triangleMap || selectedFaceIndex === null) return null;
+  if (!triangleMap || selectedFaceIndex === null) return null;
 
-    const tri = triangleMap[selectedFaceIndex];
-    if (!tri) return null;
+  const tri = triangleMap[selectedFaceIndex];
+  if (!tri) return null;
 
-    const highlightPositions = new Float32Array(9);
-    
-    // Copy the transformed vertices and add Y offset
-    highlightPositions.set([...tri.transformedVertices.v0.slice(0, 1), tri.transformedVertices.v0[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v0.slice(2)], 0);
-    highlightPositions.set([...tri.transformedVertices.v1.slice(0, 1), tri.transformedVertices.v1[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v1.slice(2)], 3);
-    highlightPositions.set([...tri.transformedVertices.v2.slice(0, 1), tri.transformedVertices.v2[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v2.slice(2)], 6);
+  const highlightPositions = new Float32Array(9);
+  
+  // Copy the transformed vertices and add Y offset
+  highlightPositions.set([...tri.transformedVertices.v0.slice(0, 1), tri.transformedVertices.v0[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v0.slice(2)], 0);
+  highlightPositions.set([...tri.transformedVertices.v1.slice(0, 1), tri.transformedVertices.v1[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v1.slice(2)], 3);
+  highlightPositions.set([...tri.transformedVertices.v2.slice(0, 1), tri.transformedVertices.v2[1] + SELECTION_Y_OFFSET, ...tri.transformedVertices.v2.slice(2)], 6);
 
-    const selectedGeometry = new THREE.BufferGeometry();
-    selectedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(highlightPositions, 3));
-    selectedGeometry.computeVertexNormals();
+  const selectedGeometry = new THREE.BufferGeometry();
+  selectedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(highlightPositions, 3));
+  selectedGeometry.computeVertexNormals();
 
     return selectedGeometry;
-  }, [triangleMap, selectedFaceIndex]);
 } 

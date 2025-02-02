@@ -24,8 +24,8 @@ export function MessagesTab() {
   }, [opened, openedTime])
 
   return (
-    <ScrollArea className="h-full w-full p-3">
-      <div className="space-y-2">
+    <ScrollArea className="h-full w-full">
+      <div className="space-y-2 p-2">
         {messages.map((message, index) => (
           <MessageRow
             key={index}

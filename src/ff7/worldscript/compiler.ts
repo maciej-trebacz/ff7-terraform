@@ -192,7 +192,6 @@ export class Compiler {
         let opcode = item.children[0].value;
         let args = item.children[1];
         if (!this.opcodes.hasOwnProperty(opcode)) {
-          debugger
           this.error('Unknown opcode: ' + opcode);
         }
   

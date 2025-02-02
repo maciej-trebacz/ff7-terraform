@@ -12,6 +12,8 @@ export interface TriangleWithVertices extends Triangle {
   };
   meshOffsetX: number;
   meshOffsetZ: number;
+  vertexIds: [number, number, number];
+  trianglePtr: Triangle;  // Direct reference to the triangle in worldmap
 }
 
 export interface MapCenter {

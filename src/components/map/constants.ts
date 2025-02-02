@@ -63,4 +63,4 @@ export const MESH_SIZE = 8192;
 export const SCALE = 0.05;
 export const ATLAS_SIZE = 2048;
 export const TEXTURE_PADDING = 4;
-export const SELECTION_Y_OFFSET = 1; 
+export const SELECTION_Y_OFFSET = 0.01; 

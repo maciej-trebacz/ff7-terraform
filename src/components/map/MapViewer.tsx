@@ -1,22 +1,29 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stats } from '@react-three/drei';
-import { Triangle, Mesh } from '@/ff7/mapfile';
+import { Triangle } from '@/ff7/mapfile';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { PerspectiveCamera } from 'three';
-import { MapType, RenderingMode } from './types';
+import { RenderingMode } from './types';
 import { CAMERA_HEIGHT, MESH_SIZE, SCALE, SHOW_DEBUG } from './constants';
 import { CameraDebugInfo, CameraDebugOverlay } from './components/DebugOverlay';
 import { MapControls } from './components/MapControls';
 import { WorldMesh } from './components/WorldMesh';
+import { useMapState } from '@/hooks/useMapState';
 
-function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSelect, isLoading: externalIsLoading }: { 
-  worldmap: Mesh[][] | null, 
-  mapType: MapType,
+interface MapViewerProps { 
   renderingMode?: RenderingMode,
   onTriangleSelect?: (triangle: Triangle | null) => void,
-  isLoading?: boolean
-}) {
+  isLoading?: boolean,
+  showGrid?: boolean
+}
+
+function MapViewer({ 
+  renderingMode = "terrain", 
+  onTriangleSelect, 
+  isLoading: externalIsLoading,
+  showGrid = false 
+}: MapViewerProps) {
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
   const [debugInfo, setDebugInfo] = useState('');
   const [rotation, setRotation] = useState(0);
@@ -24,6 +31,7 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
   const debugCanvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const cameraRef = useRef<PerspectiveCamera>();
+  const { worldmap, mapType } = useMapState();
 
   // Reset centered state when map or type changes
   useEffect(() => {
@@ -151,14 +159,13 @@ function MapViewer({ worldmap, mapType, renderingMode = "terrain", onTriangleSel
         />
         {worldmap && !isLoading && (
           <WorldMesh 
-            worldmap={worldmap} 
-            mapType={mapType} 
             renderingMode={renderingMode} 
             onTriangleSelect={handleTriangleSelect}
             selectedFaceIndex={selectedFaceIndex}
             debugCanvasRef={debugCanvasRef}
             mapCenter={mapDimensions.center}
             rotation={rotation}
+            showGrid={showGrid}
           />
         )}
       </Canvas>
