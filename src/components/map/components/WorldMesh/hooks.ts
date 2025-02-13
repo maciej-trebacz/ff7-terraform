@@ -298,7 +298,92 @@ export function useGeometry(
     geometryRef.current.computeVertexNormals();
   }, []);
 
-  return { ...result, updateTriangleUVs, updateTrianglePosition };
+  const updateColors = useCallback(() => {
+    if (!geometryRef.current || !triangleMapRef.current) return;
+
+    const colorAttribute = geometryRef.current.getAttribute('color') as THREE.BufferAttribute;
+    const colors = colorAttribute.array as Float32Array;
+    const defaultColor = new THREE.Color('#444');
+    const terrainColorMap = LOCATION_COLORS[mapType];
+    const regionColorMap = REGION_COLORS[mapType];
+
+    triangleMapRef.current.forEach((tri, index) => {
+      let color: THREE.Color;
+      if (renderingMode === "region") {
+        const regionIdx = tri.locationId % 32;
+        const colorHex = regionColorMap[regionIdx];
+        color = colorHex ? new THREE.Color(colorHex) : defaultColor;
+      } else if (renderingMode === "terrain") {
+        const colorHex = terrainColorMap[tri.type];
+        color = colorHex ? new THREE.Color(colorHex) : defaultColor;
+      } else if (renderingMode === "scripts") {
+        if (tri.isChocobo) {
+          color = new THREE.Color(SCRIPT_COLORS.chocobo);
+        } else if (tri.script > 0) {
+          color = new THREE.Color(SCRIPT_COLORS.script[tri.script as keyof typeof SCRIPT_COLORS.script] || SCRIPT_COLORS.script[8]);
+        } else {
+          color = new THREE.Color(SCRIPT_COLORS.none);
+        }
+      } else {
+        color = new THREE.Color('#fff');
+      }
+
+      // Each triangle has 3 vertices, each vertex has 3 color components
+      const offset = index * 9;
+      for (let i = 0; i < 3; i++) {
+        colors[offset + i * 3] = color.r;
+        colors[offset + i * 3 + 1] = color.g;
+        colors[offset + i * 3 + 2] = color.b;
+      }
+    });
+
+    colorAttribute.needsUpdate = true;
+  }, [mapType, renderingMode]);
+
+  const updateTriangleTexture = useCallback((
+    triangle: TriangleWithVertices,
+  ) => {
+    if (!geometryRef.current || !triangleMapRef.current) return;
+
+    const triangleId = triangleMapRef.current.findIndex(t => t === triangle);
+    if (triangleId === -1) return;
+
+    const texture = textures[triangle.texture];
+    const pos = texturePositions.get(triangle.texture);
+
+    if (!texture || !pos) return;
+
+    const uvAttribute = geometryRef.current.getAttribute('uv') as THREE.BufferAttribute;
+    const uvs = uvAttribute.array as Float32Array;
+
+    // Calculate UVs based on texture position in atlas
+    const u0 = (pos.x + calcUV(triangle.uVertex0, texture.uOffset, texture.width)) / ATLAS_SIZE;
+    const v0 = (pos.y + calcUV(triangle.vVertex0, texture.vOffset, texture.height)) / ATLAS_SIZE;
+    const u1 = (pos.x + calcUV(triangle.uVertex1, texture.uOffset, texture.width)) / ATLAS_SIZE;
+    const v1 = (pos.y + calcUV(triangle.vVertex1, texture.vOffset, texture.height)) / ATLAS_SIZE;
+    const u2 = (pos.x + calcUV(triangle.uVertex2, texture.uOffset, texture.width)) / ATLAS_SIZE;
+    const v2 = (pos.y + calcUV(triangle.vVertex2, texture.vOffset, texture.height)) / ATLAS_SIZE;
+
+    // Each triangle takes up 6 UV coordinates (2 per vertex)
+    const uvOffset = triangleId * 6;
+
+    uvs[uvOffset] = u0;
+    uvs[uvOffset + 1] = v0;
+    uvs[uvOffset + 2] = u1;
+    uvs[uvOffset + 3] = v1;
+    uvs[uvOffset + 4] = u2;
+    uvs[uvOffset + 5] = v2;
+
+    uvAttribute.needsUpdate = true;
+  }, [textures, texturePositions, triangleMapRef, geometryRef]); // Add triangleMapRef and geometryRef to dependencies
+
+  return {
+    ...result,
+    updateTriangleUVs,
+    updateTrianglePosition,
+    updateColors,
+    updateTriangleTexture,
+  };
 }
 
 

@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const calcUV = (value: number, offset: number, dimension: number) => {
+  // if (value + offset === dimension) return value - 1;
   if (offset > value) {
     offset = offset % dimension;
   }

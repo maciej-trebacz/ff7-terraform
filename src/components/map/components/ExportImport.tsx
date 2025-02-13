@@ -4,12 +4,155 @@ import { useMapState } from '@/hooks/useMapState';
 import { Mesh } from '@/ff7/mapfile';
 import { useTextureAtlas } from './WorldMesh/hooks';
 import { calcUV } from '@/lib/utils';
-import { ATLAS_SIZE, MESH_SIZE } from '../constants';
+import { ATLAS_SIZE, MESH_SIZE, TEXTURE_PADDING } from '../constants';
+import { useRef } from 'react';
+import { WorldMapTexture } from '@/ff7/texfile';
+
+// Helper functions for texture UV conversion
+function findTextureForUV(u: number, v: number, texturePositions: Map<number, { x: number, y: number, name: string }>, textures: WorldMapTexture[]): { textureId: number, texture: WorldMapTexture } | null {
+  const atlasU = u * ATLAS_SIZE;
+  // Flip V coordinate from Blender's space to our space
+  const atlasV = (1 - v) * ATLAS_SIZE;
+
+  for (const [id, pos] of texturePositions.entries()) {
+    const texture = textures[id];
+    if (!texture) continue;
+
+    // Check if the UV point falls within this texture's bounds (including padding)
+    if (atlasU >= pos.x - TEXTURE_PADDING && 
+        atlasU <= pos.x + texture.width + TEXTURE_PADDING &&
+        atlasV >= pos.y - TEXTURE_PADDING && 
+        atlasV <= pos.y + texture.height + TEXTURE_PADDING) {
+      return { textureId: id, texture };
+    }
+  }
+  return null;
+}
+
+function convertAtlasToTextureUV(atlasU: number, atlasV: number, texturePos: { x: number, y: number }, texture: WorldMapTexture): { u: number, v: number } {
+  // Convert normalized atlas UV to atlas pixel coordinates
+  const atlasPixelU = atlasU * ATLAS_SIZE;
+  const atlasPixelV = (1 - atlasV) * ATLAS_SIZE;
+  // Compute the local pixel offset within the texture in the atlas
+  const deltaU = atlasPixelU - texturePos.x;
+  const deltaV = atlasPixelV - texturePos.y;
+  // Recover the original editor UV values by adding the texture offset
+  const u = texture.uOffset + Math.round(deltaU);
+  const v = texture.vOffset + Math.round(deltaV);
+  return { u, v };
+}
 
 export function ExportImport() {
   const { selectedCell } = useGridSelection();
-  const { worldmap, textures, mapType } = useMapState();
+  const { worldmap, textures, mapType, updateSectionMesh } = useMapState();
   const { texturePositions, canvas } = useTextureAtlas(textures, mapType);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Parser to reverse generateObjContent from an .obj file
+  const parseObjFile = (content: string) => {
+    const vertices: Array<{ x: number, y: number, z: number }> = [];
+    const normals: Array<{ x: number, y: number, z: number }> = [];
+    const texCoords: Array<{ u: number, v: number }> = [];
+    const triangles: any[] = [];
+
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const parts = trimmed.split(/\s+/);
+      if (parts[0] === 'v') {
+        // Multiply vertex coordinates by 1024 to reverse the export scaling
+        vertices.push({
+          x: Math.round(parseFloat(parts[1]) * 1024),
+          y: Math.round(parseFloat(parts[2]) * 1024),
+          z: Math.round(parseFloat(parts[3]) * 1024)
+        });
+      } else if (parts[0] === 'vn') {
+        normals.push({
+          x: parseFloat(parts[1]) * 4096,
+          y: parseFloat(parts[2]) * 4096,
+          z: parseFloat(parts[3]) * 4096
+        });
+      } else if (parts[0] === 'vt') {
+        texCoords.push({
+          u: parseFloat(parts[1]),
+          v: parseFloat(parts[2])
+        });
+      } else if (parts[0] === 'f') {
+        if (parts.length < 4) continue;
+        const vIdx: number[] = [];
+        const vtIdx: number[] = [];
+        // Process exactly 3 vertices (assuming triangulated faces)
+        for (let i = 1; i <= 3; i++) {
+          const indices = parts[i].split('/');
+          vIdx.push(parseInt(indices[0]) - 1);
+          if (indices.length > 1 && indices[1] !== '') {
+            vtIdx.push(parseInt(indices[1]) - 1);
+          } else {
+            vtIdx.push(-1);
+          }
+        }
+
+        // Get texture coordinates for all vertices
+        const uvs = vtIdx.map(idx => idx >= 0 ? texCoords[idx] : null);
+        
+        // Try to find the texture this triangle belongs to using the first vertex's UVs
+        let textureInfo = uvs[0] ? findTextureForUV(uvs[0].u, uvs[0].v, texturePositions, textures) : null;
+        
+        // If we found a texture, convert all UVs to texture-local coordinates
+        let textureUVs: { u: number, v: number }[] = [];
+        if (textureInfo && uvs.every(uv => uv)) {
+          const pos = texturePositions.get(textureInfo.textureId)!;
+          textureUVs = uvs.map(uv => convertAtlasToTextureUV(uv!.u, uv!.v, pos, textureInfo!.texture));
+        }
+
+        triangles.push({
+          vertex0: vertices[vIdx[0]],
+          vertex1: vertices[vIdx[1]],
+          vertex2: vertices[vIdx[2]],
+          texture: textureInfo?.textureId ?? 0,
+          uVertex0: textureUVs[0]?.u ?? 0,
+          vVertex0: textureUVs[0]?.v ?? 0,
+          uVertex1: textureUVs[1]?.u ?? 0,
+          vVertex1: textureUVs[1]?.v ?? 0,
+          uVertex2: textureUVs[2]?.u ?? 0,
+          vVertex2: textureUVs[2]?.v ?? 0,
+          type: 0,
+          locationId: 0,
+          script: 0,
+          isChocobo: false,
+          index: triangles.length
+        });
+      }
+    }
+
+    // Construct a new Mesh object (plain object matching Mesh interface)
+    const newMesh = { vertices, normals, triangles, numVertices: vertices.length, numTriangles: triangles.length, severity: 1 };
+    return newMesh;
+  };
+
+  const handleFileChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      try {
+        const newMesh = parseObjFile(text);
+        // Update the worldmap for the selected cell using updateSectionMesh
+        updateSectionMesh(selectedCell.row, selectedCell.column, newMesh);
+        console.log('Imported mesh', newMesh);
+      } catch (err) {
+        console.error('Error parsing .obj file', err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportSectionClick = () => {
+    fileInputRef.current?.click();
+  };
 
   console.log(`[ExportImport] Selected cell:`, selectedCell);
 
@@ -247,6 +390,14 @@ export function ExportImport() {
           Export section
         </Button>
         <Button 
+          variant="secondary" 
+          size="sm" 
+          onClick={handleImportSectionClick}
+          className="w-full"
+        >
+          Import section
+        </Button>
+        <Button 
           variant="outline" 
           size="sm" 
           onClick={handleExportFullMap}
@@ -255,6 +406,14 @@ export function ExportImport() {
           Export full map
         </Button>
       </div>
+      {/* Hidden file input for importing .obj files */}
+      <input
+        type="file"
+        accept=".obj"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileChosen}
+      />
     </div>
   );
 }

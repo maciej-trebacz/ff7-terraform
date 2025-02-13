@@ -104,21 +104,23 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </mesh>
 
       {/* Regular grid lines */}
-      <lineSegments geometry={gridGeometry}>
+      <lineSegments geometry={gridGeometry} renderOrder={10}>
         <lineBasicMaterial 
           color="#ffffff" 
           opacity={0.3} 
-          transparent={true} 
+          transparent
+          depthWrite={false}
           depthTest={false}
         />
       </lineSegments>
 
       {/* Section grid lines */}
-      <lineSegments geometry={sectionGridGeometry}>
+      <lineSegments geometry={sectionGridGeometry} renderOrder={10}>
         <lineBasicMaterial 
           color="#ffff00" 
           opacity={0.5} 
-          transparent={false}
+          transparent
+          depthWrite={false}
           depthTest={false}
         />
       </lineSegments>
@@ -132,6 +134,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
             hoveredCell.z * cellSize + cellSize / 2
           ]}
           rotation={[-Math.PI / 2, 0, 0]}
+          renderOrder={10}
         >
           <planeGeometry args={[cellSize, cellSize]} />
           <meshBasicMaterial color="#ffffff" opacity={0.5} transparent depthTest={false} />

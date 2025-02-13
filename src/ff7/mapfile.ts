@@ -201,7 +201,7 @@ export class MapFile {
             out[pos++] = triangle.vVertex1;
             out[pos++] = triangle.uVertex2;
             out[pos++] = triangle.vVertex2;
-            const ids = (triangle.locationId << 9) | triangle.texture;
+            const ids = (triangle.locationId << 9) | triangle.texture | (triangle.isChocobo ? 1 << 0xf : 0);
             setUint16(ids, pos);
             pos += 2;
         });
@@ -304,28 +304,5 @@ export class MapFile {
 
         // Return the Uint8Array instead of writing to file
         return out;
-    }
-
-    readBot(botData: Uint8Array) {
-        const sectionSize = 0xB800;
-        const numSections = Math.floor(botData.length / sectionSize);
-        const hashes: string[] = [];
-
-        for (let i = 0; i < numSections; i++) {
-            const sectionStart = i * sectionSize;
-            const sectionEnd = sectionStart + sectionSize;
-            const section = botData.slice(sectionStart, sectionEnd);
-            
-            // Create hash using TextEncoder and crypto.subtle
-            const hashBuffer = new Uint8Array(section).reduce(
-                (hash, byte) => ((hash << 5) - hash + byte) | 0, 0
-            );
-            
-            // Convert to hex and take first 4 characters
-            const hashHex = Math.abs(hashBuffer).toString(16).padStart(8, '0');
-            hashes.push(hashHex.substring(0, 4));
-        }
-
-        console.log("Hashes", hashes);
     }
 }

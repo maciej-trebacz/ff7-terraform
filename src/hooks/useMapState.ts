@@ -6,11 +6,15 @@ import { TexFile, WorldMapTexture } from '@/ff7/texfile'
 import { useLgpState } from './useLgpState'
 import { WORLD_MAP_GLACIER_TEXTURES, WORLD_MAP_OVERWORLD_TEXTURES, WORLD_MAP_UNDERWATER_TEXTURES } from '@/lib/map-data'
 import { useCallback } from 'react'
+import { MESH_SIZE } from '@/components/map/constants'
+import { TriangleWithVertices } from '@/components/map/types'
 
 export type MapId = 'WM0' | 'WM2' | 'WM3'
 export type MapType = 'overworld' | 'underwater' | 'glacier'
+export type MapMode = 'selection' | 'export' | 'painting'
+export type AlternativeSection = { id: number, name: string }
 
-const ALTERNATIVE_SECTIONS = [
+const ALTERNATIVE_SECTIONS: AlternativeSection[] = [
   { id: 50, name: "Temple of Ancients gone" },
   { id: 41, name: "Junon Area crater (left)" },
   { id: 42, name: "Junon Area crater (right)" },
@@ -22,21 +26,31 @@ const ALTERNATIVE_SECTIONS = [
 interface MapState {
   mapId: MapId | null
   mapType: MapType
+  mode: MapMode
   map: MapFile | null
   worldmap: Mesh[][] | null
   textures: WorldMapTexture[]
   enabledAlternatives: number[]
   changedMeshes: [number, number][]
+  paintingSelectedTriangles: Set<number>
+  triangleMap: TriangleWithVertices[] | null
+  updateColors?: () => void
+  updateTriangleTexture?: (triangle: TriangleWithVertices) => void
 }
 
 const mapStateAtom = atom<MapState>({
   mapId: null,
   mapType: 'overworld',
+  mode: 'selection',
   map: null,
   worldmap: null,
   textures: [],
   enabledAlternatives: [],
-  changedMeshes: []
+  changedMeshes: [],
+  paintingSelectedTriangles: new Set<number>(),
+  triangleMap: null,
+  updateColors: undefined,
+  updateTriangleTexture: undefined
 })
 
 const MESHES_IN_ROW = 4;
@@ -65,13 +79,13 @@ export function useMapState() {
     }
   }
 
-  const parseWorldmap = (rawMapData: MapFile, mapType: MapType, enabledAlternatives: number[]) => {
+  const parseWorldmap = (rawMapData: MapFile, mapType: MapType, enabledAlternatives: number[], onlyRefresh?: number) => {
     if (!rawMapData) return null;
 
     console.time("[Map] Parsing worldmap")
+
     // 2D array containing rows and columns of meshes
     const data: Mesh[][] = [];
-
 
     const { horizontal: SECTIONS_HORIZONTAL, vertical: SECTIONS_VERTICAL } = dimensions[mapType as keyof typeof dimensions];
 
@@ -84,7 +98,11 @@ export function useMapState() {
         if (ALTERNATIVE_SECTIONS.some(alt => alt.id === sectionIdx && enabledAlternatives.includes(alt.id))) {
           trueSectionIdx = 63 + ALTERNATIVE_SECTIONS.findIndex(alt => alt.id === sectionIdx);
         }
-        rowData.push(rawMapData.readMesh(trueSectionIdx, meshIdx));
+        if (!onlyRefresh || sectionIdx === onlyRefresh) {
+          rowData.push(rawMapData.readMesh(trueSectionIdx, meshIdx));
+        } else {
+          rowData.push(state.worldmap?.[row]?.[column]);
+        }
       }
       data.push(rowData);
     }
@@ -128,21 +146,19 @@ export function useMapState() {
       return
     }
 
-    const botPath = `${dataPath}/data/wm/${mapId}.BOT`
-    const botData = await readFile(botPath)
-    const botMap = new MapFile(botData)
-    botMap.readBot(botData);
-
     const mapData = new MapFile(fileData)
+    console.debug("[Map] Map data", mapData)
     const worldmapData = parseWorldmap(mapData, mapType, state.enabledAlternatives)
+
+    console.debug("[Map] Worldmap data", worldmapData)
 
     setState(prev => ({ ...prev, mapId, mapType, map: mapData, worldmap: worldmapData }))
     return mapData
   }
 
-  const setEnabledAlternatives = (alternatives: number[]) => {
+  const setEnabledAlternatives = (alternatives: number[], changed?: AlternativeSection) => {
     setState(prev => {
-      const worldmapData = prev.map ? parseWorldmap(prev.map, prev.mapType, alternatives) : null;
+      const worldmapData = prev.map ? parseWorldmap(prev.map, prev.mapType, alternatives, changed?.id) : null;
       return { ...prev, enabledAlternatives: alternatives, worldmap: worldmapData };
     });
   }
@@ -189,17 +205,161 @@ export function useMapState() {
     console.timeEnd("[Map] Saving map")
   }
 
+  const setMode = (mode: MapMode) => {
+    setState(prev => ({ ...prev, mode, paintingSelectedTriangles: mode === 'painting' ? prev.paintingSelectedTriangles : new Set<number>() }));
+  };
+
+  const togglePaintingSelectedTriangle = (faceIndex: number, add: boolean) => {
+    setState(prev => {
+      const newSet = new Set(prev.paintingSelectedTriangles);
+      if (add) {
+        newSet.add(faceIndex);
+      } else {
+        newSet.delete(faceIndex);
+      }
+      return { ...prev, paintingSelectedTriangles: newSet };
+    });
+  };
+
+  interface TriangleUpdates {
+    type?: number;
+    locationId?: number;
+    script?: number;
+    isChocobo?: boolean;
+    texture?: number;
+    uVertex0?: number;
+    vVertex0?: number;
+    uVertex1?: number;
+    vVertex1?: number;
+    uVertex2?: number;
+    vVertex2?: number;
+  }
+
+  const updateTriangle = (triangle: TriangleWithVertices, updates: TriangleUpdates): [number, number] => {
+    if (!triangle) return [-1, -1];
+
+    // Update the triangle in triangleMap
+    if (updates.type !== undefined) triangle.type = updates.type;
+    if (updates.locationId !== undefined) triangle.locationId = updates.locationId;
+    if (updates.script !== undefined) triangle.script = updates.script;
+    if (updates.isChocobo !== undefined) triangle.isChocobo = updates.isChocobo;
+    if (updates.texture !== undefined) triangle.texture = updates.texture;
+    if (updates.uVertex0 !== undefined) triangle.uVertex0 = updates.uVertex0;
+    if (updates.vVertex0 !== undefined) triangle.vVertex0 = updates.vVertex0;
+    if (updates.uVertex1 !== undefined) triangle.uVertex1 = updates.uVertex1;
+    if (updates.vVertex1 !== undefined) triangle.vVertex1 = updates.vVertex1;
+    if (updates.uVertex2 !== undefined) triangle.uVertex2 = updates.uVertex2;
+    if (updates.vVertex2 !== undefined) triangle.vVertex2 = updates.vVertex2;
+
+    // Update the underlying triangle data using trianglePtr
+    if (updates.type !== undefined) triangle.trianglePtr.type = updates.type;
+    if (updates.locationId !== undefined) triangle.trianglePtr.locationId = updates.locationId;
+    if (updates.script !== undefined) triangle.trianglePtr.script = updates.script;
+    if (updates.isChocobo !== undefined) triangle.trianglePtr.isChocobo = updates.isChocobo;
+    if (updates.texture !== undefined) triangle.trianglePtr.texture = updates.texture;
+    if (updates.uVertex0 !== undefined) triangle.trianglePtr.uVertex0 = updates.uVertex0;
+    if (updates.vVertex0 !== undefined) triangle.trianglePtr.vVertex0 = updates.vVertex0;
+    if (updates.uVertex1 !== undefined) triangle.trianglePtr.uVertex1 = updates.uVertex1;
+    if (updates.vVertex1 !== undefined) triangle.trianglePtr.vVertex1 = updates.vVertex1;
+    if (updates.uVertex2 !== undefined) triangle.trianglePtr.uVertex2 = updates.uVertex2;
+    if (updates.vVertex2 !== undefined) triangle.trianglePtr.vVertex2 = updates.vVertex2;
+
+    debugger;
+    if (updates.texture !== undefined || updates.uVertex0 !== undefined || updates.vVertex0 !== undefined || updates.uVertex1 !== undefined || updates.vVertex1 !== undefined || updates.uVertex2 !== undefined || updates.vVertex2 !== undefined) {
+      if (state.updateTriangleTexture) {
+        state.updateTriangleTexture(triangle);
+      }
+    }
+
+    // Return the mesh coordinates for tracking modified meshes
+    const row = Math.floor(triangle.meshOffsetZ / MESH_SIZE);
+    const col = Math.floor(triangle.meshOffsetX / MESH_SIZE);
+    return [row, col];
+  };
+
+  const updateSelectedTriangles = (updates: TriangleUpdates) => {
+    setState(prev => {
+      if (!prev.worldmap || !prev.triangleMap) return prev;
+
+      // Track which meshes were modified
+      const modifiedMeshes = new Set<string>();
+
+      console.debug("[Map] Updating", updates)
+
+      // Update each selected triangle
+      prev.paintingSelectedTriangles.forEach(faceIndex => {
+        const triangle = prev.triangleMap![faceIndex];
+        console.debug("[Map] Updating triangle", triangle)
+        
+        const [row, col] = updateTriangle(triangle, updates);
+        if (row >= 0 && col >= 0) {
+          modifiedMeshes.add(`${row},${col}`);
+        }
+      });
+
+      // Add all modified meshes to changedMeshes
+      const newChangedMeshes = [...prev.changedMeshes];
+      modifiedMeshes.forEach(key => {
+        const [row, col] = key.split(',').map(Number);
+        if (!prev.changedMeshes.some(([r, c]) => r === row && c === col)) {
+          newChangedMeshes.push([row, col]);
+        }
+      });
+
+      // Update the colors in the geometry
+      if (prev.updateColors) {
+        prev.updateColors();
+      }
+
+      return {
+        ...prev,
+        changedMeshes: newChangedMeshes,
+        triangleMap: [...prev.triangleMap] // Create new array to trigger re-render
+      };
+    });
+  };
+
+  const setTriangleMap = useCallback((triangleMap: TriangleWithVertices[], updateColors?: () => void, updateTriangleTexture?: (triangle: TriangleWithVertices) => void) => {
+    setState(prev => ({ ...prev, triangleMap, updateColors, updateTriangleTexture }));
+  }, [setState]);
+
+  // Added updateSectionMesh: updates a single mesh in the worldmap and tracks it as changed
+  const updateSectionMesh = (row: number, col: number, newMesh: Mesh) => {
+    console.log(`updateSectionMesh called for row=${row}, col=${col} with mesh:`, newMesh);
+    setState(prev => {
+      if (!prev.worldmap) return prev;
+      const newWorldmap = [...prev.worldmap];
+      newWorldmap[row] = [...newWorldmap[row]];
+      newWorldmap[row][col] = newMesh;
+      const alreadyChanged = prev.changedMeshes.some(([r, c]) => r === row && c === col);
+      return {
+        ...prev,
+        worldmap: newWorldmap,
+        changedMeshes: alreadyChanged ? prev.changedMeshes : [...prev.changedMeshes, [row, col]]
+      };
+    });
+  };
+
   return {
     mapId: state.mapId,
     mapType: state.mapType,
+    mode: state.mode,
     map: state.map,
     worldmap: state.worldmap,
     textures: state.textures,
     enabledAlternatives: state.enabledAlternatives,
+    triangleMap: state.triangleMap,
     loadMap,
     saveMap,
     loadTextures,
     setEnabledAlternatives,
-    addChangedMesh
+    addChangedMesh,
+    setMode,
+    togglePaintingSelectedTriangle,
+    paintingSelectedTriangles: state.paintingSelectedTriangles,
+    updateSelectedTriangles,
+    updateTriangle,
+    setTriangleMap,
+    updateSectionMesh
   }
 } 

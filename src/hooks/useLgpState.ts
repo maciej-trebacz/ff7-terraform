@@ -36,7 +36,6 @@ export function useLgpState() {
 
   const getFile = async (filename: string): Promise<Uint8Array | null> => {
     try {
-      console.debug("[LGP] Getting file:", filename)
       if (!state.lgp) {
         throw new Error("LGP not loaded. Call loadLgp first.")
       }

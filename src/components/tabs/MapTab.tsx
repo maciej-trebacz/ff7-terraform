@@ -1,6 +1,6 @@
 import { Triangle } from "@/ff7/mapfile";
 import { useAppState } from "@/hooks/useAppState";
-import { MapType, useMapState } from "@/hooks/useMapState";
+import { MapType, MapMode, useMapState } from "@/hooks/useMapState";
 import { useStatusBar } from "@/hooks/useStatusBar";
 import { useEffect, useState } from "react";
 import MapViewer from "../map/MapViewer";
@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SelectedTriangle } from "@/components/map/components/SelectedTriangle";
-import { ExportImport } from "@/components/map/components/ExportImport";
+import { SelectionSidebar } from "@/components/map/components/SelectionSidebar";
+import { ExportImportSidebar } from "@/components/map/components/ExportImportSidebar";
+import { PaintingSidebar } from "@/components/map/components/PaintingSidebar";
 import { GridSelectionProvider } from '@/contexts/GridSelectionContext';
 
 type MapId = "WM0" | "WM2" | "WM3";
@@ -44,14 +45,14 @@ const MAP_ID_BY_TYPE: Record<MapType, MapId> = {
 };
 
 export function MapTab() {
-  const { loadMap, loadTextures, textures, worldmap, mapType: currentMapType, enabledAlternatives, setEnabledAlternatives } = useMapState();
+  const { loadMap, loadTextures, textures, worldmap, mapType: currentMapType, mode, setMode, enabledAlternatives, setEnabledAlternatives } = useMapState();
   const { opened, openedTime } = useAppState();
   const { setMessage } = useStatusBar();
 
   const [selectedTriangle, setSelectedTriangle] = useState<Triangle | null>(null);
   const [renderingMode, setRenderingMode] = useState<RenderingMode>("terrain");
   const [isLoading, setIsLoading] = useState(false);
-  const [showExportImport, setShowExportImport] = useState(false);
+  const [showWireframe, setShowWireframe] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -66,12 +67,13 @@ export function MapTab() {
       } catch (error) {
         setMessage(error as string, true);
       } finally {
+        console.log('[MapTab] Loading complete');
         setIsLoading(false);
       }
     }
 
     load();
-  }, [opened, openedTime, currentMapType, enabledAlternatives]);
+  }, [opened, openedTime, currentMapType]);
 
   useEffect(() => {
     if (selectedTriangle) {
@@ -110,15 +112,24 @@ export function MapTab() {
     setSelectedTriangle(updatedTriangle);
   };
 
+  const handleModeChange = (newMode: MapMode) => {
+    setMode(newMode);
+    if (newMode !== 'selection') {
+      setSelectedTriangle(null);
+    }
+  };
+
   return (
     <GridSelectionProvider>
       <div className="flex h-full w-full">
         <div className="flex-1">
           <MapViewer 
             renderingMode={renderingMode} 
-            showGrid={showExportImport}
-            onTriangleSelect={showExportImport ? undefined : setSelectedTriangle}
+            showGrid={mode === 'export'}
+            onTriangleSelect={mode === 'selection' ? setSelectedTriangle : undefined}
             isLoading={isLoading}
+            cameraType={mode === 'export' ? 'orthographic' : 'perspective'}
+            wireframe={showWireframe}
           />
         </div>
         <div className="w-[300px] border-l bg-background pl-3 pr-2">
@@ -150,14 +161,30 @@ export function MapTab() {
                     <SelectItem value="scripts">Scripts & Chocobos</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setShowExportImport(true)}
-                >
-                  Export / Import geometry
-                </Button>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox
+                    id="show-wireframe"
+                    checked={showWireframe}
+                    onCheckedChange={(checked) => setShowWireframe(checked === true)}
+                  />
+                  <Label htmlFor="show-wireframe" className="text-sm">Show wireframes</Label>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleModeChange('export')}
+                  >
+                    Export / Import geometry
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleModeChange('painting')}
+                  >
+                    Painting
+                  </Button>
+                </div>
               </div>
               <div className="text-xs text-muted-foreground">
                 Sections: {worldmap ? `${worldmap.length}x${worldmap[0]?.length}` : 'Loading...'}
@@ -180,7 +207,8 @@ export function MapTab() {
                       setEnabledAlternatives(
                         checked 
                           ? [...enabledAlternatives, section.id]
-                          : enabledAlternatives.filter(id => id !== section.id)
+                          : enabledAlternatives.filter(id => id !== section.id),
+                        section
                       );
                     }}
                   />
@@ -194,37 +222,21 @@ export function MapTab() {
               ))}
             </CollapsibleContent>
           </Collapsible>
-          <Separator className="my-4" />
-          <div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">{showExportImport ? "Export / Import geometry" : "Triangle"}</h3>
-              {showExportImport && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setShowExportImport(false)}
-                  className="h-6"
-                >
-                  Back
-                </Button>
-              )}
-            </div>
-            <div className="mt-2">
-              {showExportImport ? (
-                <div className="flex flex-col gap-2 w-72">
-                  <div className="space-y-2">
-                    <ExportImport />
-                  </div>
-                </div>
-              ) : (
-                <SelectedTriangle 
-                  triangle={selectedTriangle}
-                  textures={textures}
-                  onVertexChange={handleVertexChange}
-                />
-              )}
-            </div>
-          </div>
+          {mode === 'export' ? (
+            <ExportImportSidebar
+              setMode={setMode}
+            />
+          ) : mode === 'painting' ? (
+            <PaintingSidebar
+              setMode={setMode}
+            />
+          ) : (
+            <SelectionSidebar
+              selectedTriangle={selectedTriangle}
+              textures={textures}
+              onVertexChange={handleVertexChange}
+            />
+          )}
         </div>
       </div>
     </GridSelectionProvider>

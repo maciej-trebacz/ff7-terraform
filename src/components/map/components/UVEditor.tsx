@@ -357,6 +357,22 @@ export function UVEditor({ triangle, onSave }: UVEditorProps) {
             >
               Paste
             </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => {
+                const cycledUVs = [
+                  uvCoords[2],
+                  uvCoords[0],
+                  uvCoords[1]
+                ];
+                setUvCoords(cycledUVs);
+                onSave(cycledUVs);
+              }}
+            >
+              Cycle
+            </Button>
           </div>
         </div>
       </div>
