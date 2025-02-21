@@ -4,6 +4,7 @@ interface StatusBarContextType {
   message: string
   isError: boolean
   setMessage: (message: string | Error, isError?: boolean) => void
+  setMapInfo: (mapType: string, sections: { length: number, width: number } | null) => void
 }
 
 const StatusBarContext = createContext<StatusBarContextType | undefined>(undefined)
@@ -22,8 +23,16 @@ export function StatusBarProvider({ children }: { children: ReactNode }) {
     setIsError(isError)
   }
 
+  const setMapInfo = (mapType: string, sections: { length: number, width: number } | null) => {
+    if (!sections) {
+      setMessage("Loading map...")
+      return
+    }
+    setMessage(`Loaded the ${mapType} map with ${sections.length}x${sections.width} sections`)
+  }
+
   return (
-    <StatusBarContext.Provider value={{ message, isError, setMessage: setMessageWithError }}>
+    <StatusBarContext.Provider value={{ message, isError, setMessage: setMessageWithError, setMapInfo }}>
       {children}
     </StatusBarContext.Provider>
   )

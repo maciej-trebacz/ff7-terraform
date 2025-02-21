@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { MapMode, useMapState } from "@/hooks/useMapState";
+import { useMapState } from "@/hooks/useMapState";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,11 +12,6 @@ import {
 } from "@/components/ui/select";
 import { REGION_NAMES, TRIANGLE_TYPES } from "@/lib/map-data";
 import { useState } from "react";
-import { Triangle } from "@/ff7/mapfile";
-
-interface PaintingSidebarProps {
-  setMode: (mode: MapMode) => void;
-}
 
 interface PaintingValues {
   type: string | null;
@@ -37,9 +31,7 @@ interface CopiedTriangleData {
   vVertex2: number;
 }
 
-export function PaintingSidebar({
-  setMode,
-}: PaintingSidebarProps) {
+export function PaintingSidebar() {
   const { paintingSelectedTriangles, worldmap, updateSelectedTriangles, updateTriangle, textures, togglePaintingSelectedTriangle, triangleMap } = useMapState();
   const [values, setValues] = useState<PaintingValues>({
     type: null,
@@ -121,137 +113,124 @@ export function PaintingSidebar({
 
   return (
     <>
-      <Separator className="my-4" />
-      <div>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Painting Mode</h3>
+      <h3 className="text-sm font-medium">Painting Mode</h3>
+      <div className="mt-4 space-y-4">
+        <div className="flex space-x-1">
           <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setMode('selection')}
-            className="h-6"
-          >
-            Back
-          </Button>
-        </div>
-        <div className="mt-4 space-y-4">
-          <div className="flex space-x-1">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="h-6 text-xs px-2"
-              onClick={handleCopyTextureAndUVs}
-              disabled={paintingSelectedTriangles.size === 0}
-            >
-              Copy Texture & UVs
-            </Button>
-            <Button 
-              variant="outline"
-              size="sm"
-              className="h-6 text-xs px-2"
-              onClick={handlePasteTextureAndUVs}
-              disabled={copiedTriangles.length === 0 || paintingSelectedTriangles.size === 0}
-            >
-              Paste Texture & UVs
-            </Button>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Triangle Type</Label>
-            <Select
-              value={values.type ?? undefined}
-              onValueChange={(value) => setValues(prev => ({ ...prev, type: value }))}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(TRIANGLE_TYPES).map(([id, data]) => (
-                  <SelectItem key={id} value={id}>
-                    {data.type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Texture</Label>
-            <Select
-              value={values.texture ?? undefined}
-              onValueChange={(value) => setValues(prev => ({ ...prev, texture: value }))}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select texture" />
-              </SelectTrigger>
-              <SelectContent>
-                {textures.map((texture, index) => (
-                  <SelectItem key={index} value={index.toString()}>
-                    {texture.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Region</Label>
-            <Select
-              value={values.region ?? undefined}
-              onValueChange={(value) => setValues(prev => ({ ...prev, region: value }))}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select region" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(REGION_NAMES).map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Script ID</Label>
-            <Input 
-              type="number" 
-              className="h-8"
-              min={0}
-              max={255}
-              value={values.scriptId}
-              onChange={(e) => setValues(prev => ({ ...prev, scriptId: e.target.value }))}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="chocobo"
-              checked={values.isChocobo}
-              onCheckedChange={(checked) => setValues(prev => ({ ...prev, isChocobo: checked === true }))}
-            />
-            <Label htmlFor="chocobo">Is Chocobo Area</Label>
-          </div>
-
-          <Button 
-            className="w-full" 
+            variant="outline" 
             size="sm"
-            onClick={handleApply}
+            className="h-6 text-xs px-2"
+            onClick={handleCopyTextureAndUVs}
             disabled={paintingSelectedTriangles.size === 0}
           >
-            Apply to {paintingSelectedTriangles.size} Selected
+            Copy Texture & UVs
           </Button>
-
           <Button 
-            className="w-full" 
+            variant="outline"
             size="sm"
-            variant="link"
-            onClick={handleClearSelection}
-            disabled={paintingSelectedTriangles.size === 0}
+            className="h-6 text-xs px-2"
+            onClick={handlePasteTextureAndUVs}
+            disabled={copiedTriangles.length === 0 || paintingSelectedTriangles.size === 0}
           >
-            Clear Selected
+            Paste Texture & UVs
           </Button>
         </div>
+        <div className="space-y-1.5">
+          <Label>Triangle Type</Label>
+          <Select
+            value={values.type ?? undefined}
+            onValueChange={(value) => setValues(prev => ({ ...prev, type: value }))}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TRIANGLE_TYPES).map(([id, data]) => (
+                <SelectItem key={id} value={id}>
+                  {data.type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Texture</Label>
+          <Select
+            value={values.texture ?? undefined}
+            onValueChange={(value) => setValues(prev => ({ ...prev, texture: value }))}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="Select texture" />
+            </SelectTrigger>
+            <SelectContent>
+              {textures.map((texture, index) => (
+                <SelectItem key={index} value={index.toString()}>
+                  {texture.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Region</Label>
+          <Select
+            value={values.region ?? undefined}
+            onValueChange={(value) => setValues(prev => ({ ...prev, region: value }))}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="Select region" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(REGION_NAMES).map(([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Script ID</Label>
+          <Input 
+            type="number" 
+            className="h-8"
+            min={0}
+            max={255}
+            value={values.scriptId}
+            onChange={(e) => setValues(prev => ({ ...prev, scriptId: e.target.value }))}
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="chocobo"
+            checked={values.isChocobo}
+            onCheckedChange={(checked) => setValues(prev => ({ ...prev, isChocobo: checked === true }))}
+          />
+          <Label htmlFor="chocobo">Is Chocobo Area</Label>
+        </div>
+
+        <Button 
+          className="w-full" 
+          size="sm"
+          onClick={handleApply}
+          disabled={paintingSelectedTriangles.size === 0}
+        >
+          Apply to {paintingSelectedTriangles.size} Selected
+        </Button>
+
+        <Button 
+          className="w-full" 
+          size="sm"
+          variant="link"
+          onClick={handleClearSelection}
+          disabled={paintingSelectedTriangles.size === 0}
+        >
+          Clear Selected
+        </Button>
       </div>
     </>
   );

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Copy, ClipboardPaste, RefreshCw } from "lucide-react";
 
 interface UVEditorProps {
   triangle: Triangle | null;
@@ -337,16 +338,17 @@ export function UVEditor({ triangle, onSave }: UVEditorProps) {
           <div className="flex space-x-1">
             <Button 
               variant="outline" 
-              size="sm"
-              className="h-6 text-xs px-2"
+              size="icon"
+              className="h-6 w-6"
               onClick={() => setCopiedUVs(uvCoords)}
+              title="Copy UV coordinates"
             >
-              Copy
+              <Copy className="h-3 w-3" />
             </Button>
             <Button 
               variant="outline"
-              size="sm"
-              className="h-6 text-xs px-2"
+              size="icon"
+              className="h-6 w-6"
               onClick={() => {
                 if (copiedUVs) {
                   setUvCoords(copiedUVs);
@@ -354,13 +356,14 @@ export function UVEditor({ triangle, onSave }: UVEditorProps) {
                 }
               }}
               disabled={!copiedUVs}
+              title="Paste UV coordinates"
             >
-              Paste
+              <ClipboardPaste className="h-3 w-3" />
             </Button>
             <Button 
               variant="outline"
-              size="sm"
-              className="h-6 text-xs px-2"
+              size="icon"
+              className="h-6 w-6"
               onClick={() => {
                 const cycledUVs = [
                   uvCoords[2],
@@ -370,8 +373,9 @@ export function UVEditor({ triangle, onSave }: UVEditorProps) {
                 setUvCoords(cycledUVs);
                 onSave(cycledUVs);
               }}
+              title="Cycle UV coordinates"
             >
-              Cycle
+              <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
         </div>

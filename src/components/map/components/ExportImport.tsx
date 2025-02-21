@@ -5,8 +5,9 @@ import { Mesh } from '@/ff7/mapfile';
 import { useTextureAtlas } from './WorldMesh/hooks';
 import { calcUV } from '@/lib/utils';
 import { ATLAS_SIZE, MESH_SIZE, TEXTURE_PADDING } from '../constants';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { WorldMapTexture } from '@/ff7/texfile';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Helper functions for texture UV conversion
 function findTextureForUV(u: number, v: number, texturePositions: Map<number, { x: number, y: number, name: string }>, textures: WorldMapTexture[]): { textureId: number, texture: WorldMapTexture } | null {
@@ -42,19 +43,54 @@ function convertAtlasToTextureUV(atlasU: number, atlasV: number, texturePos: { x
   return { u, v };
 }
 
+// Helper function to generate a unique key for a triangle based on vertex coordinates
+function generateTriangleKey(vertex0: { x: number, y: number, z: number }, vertex1: { x: number, y: number, z: number }, vertex2: { x: number, y: number, z: number }): string {
+  // Sort vertices to ensure consistent key regardless of vertex order
+  const vertices = [vertex0, vertex1, vertex2].sort((a, b) => {
+    if (a.x !== b.x) return a.x - b.x;
+    if (a.y !== b.y) return a.y - b.y;
+    return a.z - b.z;
+  });
+  return vertices.map(v => `${v.x},${v.y},${v.z}`).join('|');
+}
+
 export function ExportImport() {
   const { selectedCell } = useGridSelection();
   const { worldmap, textures, mapType, updateSectionMesh } = useMapState();
   const { texturePositions, canvas } = useTextureAtlas(textures, mapType);
+  const [resetNormals, setResetNormals] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Parser to reverse generateObjContent from an .obj file
   const parseObjFile = (content: string) => {
     const vertices: Array<{ x: number, y: number, z: number }> = [];
-    const normals: Array<{ x: number, y: number, z: number }> = [];
+    const tempNormals: Array<{ x: number, y: number, z: number }> = []; // Temporary storage for raw normals
+    const normals: Array<{ x: number, y: number, z: number }> = []; // Final vertex-mapped normals
     const texCoords: Array<{ u: number, v: number }> = [];
     const triangles: any[] = [];
+
+    // Store normal indices per vertex for later processing
+    const vertexToNormalIdx: number[] = [];
+
+    // Create a hash map of existing triangles from the current mesh
+    const existingTriangles = new Map<string, { type: number, locationId: number, script: number, isChocobo: boolean }>();
+    if (worldmap && selectedCell) {
+      const currentMesh = worldmap[selectedCell.row][selectedCell.column];
+      currentMesh.triangles.forEach(triangle => {
+        const key = generateTriangleKey(
+          triangle.vertex0,
+          triangle.vertex1,
+          triangle.vertex2
+        );
+        existingTriangles.set(key, {
+          type: triangle.type,
+          locationId: triangle.locationId,
+          script: triangle.script,
+          isChocobo: triangle.isChocobo
+        });
+      });
+    }
 
     const lines = content.split('\n');
     for (const line of lines) {
@@ -68,8 +104,10 @@ export function ExportImport() {
           y: Math.round(parseFloat(parts[2]) * 1024),
           z: Math.round(parseFloat(parts[3]) * 1024)
         });
+        // Initialize normal mapping for this vertex
+        vertexToNormalIdx.push(-1);
       } else if (parts[0] === 'vn') {
-        normals.push({
+        tempNormals.push({
           x: parseFloat(parts[1]) * 4096,
           y: parseFloat(parts[2]) * 4096,
           z: parseFloat(parts[3]) * 4096
@@ -86,7 +124,15 @@ export function ExportImport() {
         // Process exactly 3 vertices (assuming triangulated faces)
         for (let i = 1; i <= 3; i++) {
           const indices = parts[i].split('/');
-          vIdx.push(parseInt(indices[0]) - 1);
+          const vertexIndex = parseInt(indices[0]) - 1;
+          vIdx.push(vertexIndex);
+          
+          // Store normal index for this vertex
+          if (indices.length > 2) {
+            const normalIndex = parseInt(indices[2]) - 1;
+            vertexToNormalIdx[vertexIndex] = normalIndex;
+          }
+
           if (indices.length > 1 && indices[1] !== '') {
             vtIdx.push(parseInt(indices[1]) - 1);
           } else {
@@ -107,6 +153,14 @@ export function ExportImport() {
           textureUVs = uvs.map(uv => convertAtlasToTextureUV(uv!.u, uv!.v, pos, textureInfo!.texture));
         }
 
+        // Check if there's a matching triangle in the existing mesh
+        const triangleKey = generateTriangleKey(
+          vertices[vIdx[0]],
+          vertices[vIdx[1]],
+          vertices[vIdx[2]]
+        );
+        const existingTriangle = existingTriangles.get(triangleKey);
+
         triangles.push({
           vertex0: vertices[vIdx[0]],
           vertex1: vertices[vIdx[1]],
@@ -118,12 +172,22 @@ export function ExportImport() {
           vVertex1: textureUVs[1]?.v ?? 0,
           uVertex2: textureUVs[2]?.u ?? 0,
           vVertex2: textureUVs[2]?.v ?? 0,
-          type: 0,
-          locationId: 0,
-          script: 0,
-          isChocobo: false,
+          type: existingTriangle?.type ?? 0,
+          locationId: existingTriangle?.locationId ?? 0,
+          script: existingTriangle?.script ?? 0,
+          isChocobo: existingTriangle?.isChocobo ?? false,
           index: triangles.length
         });
+      }
+    }
+
+    // Map normals to vertices using the stored indices
+    for (let i = 0; i < vertices.length; i++) {
+      if (resetNormals) {
+        normals.push({ x: 0, y: -4096, z: 0 });
+      } else {
+        const normalIdx = vertexToNormalIdx[i];
+        normals.push(normalIdx >= 0 ? tempNormals[normalIdx] : { x: 0, y: 0, z: 0 });
       }
     }
 
@@ -146,6 +210,10 @@ export function ExportImport() {
       } catch (err) {
         console.error('Error parsing .obj file', err);
       }
+      // Reset the file input value so the same file can be imported again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     };
     reader.readAsText(file);
   };
@@ -153,8 +221,6 @@ export function ExportImport() {
   const handleImportSectionClick = () => {
     fileInputRef.current?.click();
   };
-
-  console.log(`[ExportImport] Selected cell:`, selectedCell);
 
   if (!selectedCell) {
     return (
@@ -195,7 +261,11 @@ export function ExportImport() {
 
     // Add vertex normals
     mesh.normals.forEach((normal) => {
-      objContent += `vn ${normal.x.toFixed(6)} ${normal.y.toFixed(6)} ${normal.z.toFixed(6)}\n`;
+      // Scale normals by 1/1024 to match vertex scaling
+      const x = normal.x / 1024;
+      const y = normal.y / 1024;
+      const z = normal.z / 1024;
+      objContent += `vn ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
       normalCount++;
     });
 
@@ -397,6 +467,20 @@ export function ExportImport() {
         >
           Import section
         </Button>
+        <div className="flex items-center space-x-2 py-1">
+          <Checkbox 
+            id="reset-normals" 
+            checked={resetNormals}
+            onCheckedChange={(checked) => setResetNormals(checked === true)}
+          />
+          <label
+            htmlFor="reset-normals"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Reset imported normals
+          </label>
+        </div>
+        <br />
         <Button 
           variant="outline" 
           size="sm" 

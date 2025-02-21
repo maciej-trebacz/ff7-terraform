@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { MESH_SIZE, SCALE } from '../constants';
 import { useGridSelection } from '@/contexts/GridSelectionContext';
+import { useMapState } from '@/hooks/useMapState';
 
 interface GridOverlayProps {
   worldmapLength: number;
@@ -11,7 +12,8 @@ interface GridOverlayProps {
 
 export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps) {
   const [hoveredCell, setHoveredCell] = useState<{ x: number, z: number } | null>(null);
-  const { selectCell } = useGridSelection();
+  const { selectCell, selectedCell } = useGridSelection();
+  const { mode } = useMapState();
   const cellSize = MESH_SIZE * SCALE;
   const yOffset = 0;
   const SECTION_SIZE = 4; // 4x4 meshes per section
@@ -62,6 +64,8 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
   }, [worldmapLength, worldmapWidth, cellSize, yOffset]);
 
   const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
+    if (mode !== "export") return;
+    
     // Get the intersection point in world coordinates
     const x = Math.floor(event.point.x / cellSize);
     const z = Math.floor(event.point.z / cellSize);
@@ -75,10 +79,12 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
   };
 
   const handlePointerOut = () => {
+    if (mode !== "export") return;
     setHoveredCell(null);
   };
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (mode !== "export") return;
     const x = Math.floor(event.point.x / cellSize);
     const z = Math.floor(event.point.z / cellSize);
     console.debug(`Clicked on cell at ${z}, ${x}`);
@@ -104,10 +110,10 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </mesh>
 
       {/* Regular grid lines */}
-      <lineSegments geometry={gridGeometry} renderOrder={10}>
+      <lineSegments geometry={gridGeometry} renderOrder={12}>
         <lineBasicMaterial 
           color="#ffffff" 
-          opacity={0.3} 
+          opacity={0.8} 
           transparent
           depthWrite={false}
           depthTest={false}
@@ -115,7 +121,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </lineSegments>
 
       {/* Section grid lines */}
-      <lineSegments geometry={sectionGridGeometry} renderOrder={10}>
+      <lineSegments geometry={sectionGridGeometry} renderOrder={12}>
         <lineBasicMaterial 
           color="#ffff00" 
           opacity={0.5} 
@@ -126,7 +132,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </lineSegments>
 
       {/* Hover highlight */}
-      {hoveredCell && (
+      {hoveredCell && mode === "export" && (
         <mesh
           position={[
             hoveredCell.x * cellSize + cellSize / 2,
@@ -134,10 +140,26 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
             hoveredCell.z * cellSize + cellSize / 2
           ]}
           rotation={[-Math.PI / 2, 0, 0]}
-          renderOrder={10}
+          renderOrder={11}
         >
           <planeGeometry args={[cellSize, cellSize]} />
           <meshBasicMaterial color="#ffffff" opacity={0.5} transparent depthTest={false} />
+        </mesh>
+      )}
+
+      {/* Selected cell highlight */}
+      {selectedCell && mode === "export" && (
+        <mesh
+          position={[
+            selectedCell.column * cellSize + cellSize / 2,
+            yOffset + 0.05,
+            selectedCell.row * cellSize + cellSize / 2
+          ]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          renderOrder={10}
+        >
+          <planeGeometry args={[cellSize, cellSize]} />
+          <meshBasicMaterial color="#ffff00" opacity={0.3} transparent depthTest={false} />
         </mesh>
       )}
     </group>

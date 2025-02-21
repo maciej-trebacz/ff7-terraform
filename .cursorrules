@@ -11,3 +11,4 @@ The goal of this application is to build a working Final Fantasy VII world map e
 ## Installing shadcn components
 
 The proper command for installing shadcn components is: `npx shadcn@latest add <components>`
+Before installing components check if a component is already installed in components.json.

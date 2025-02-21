@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { useTextureAtlas } from './hooks';
@@ -7,7 +7,7 @@ import { useSelectedTriangleGeometry } from './hooks';
 import { RenderingMode, TriangleWithVertices } from '../../types';
 import { Triangle } from '@/ff7/mapfile';
 import { useMapState } from '@/hooks/useMapState';
-import { MESH_SIZE } from '../../constants';
+import { MESH_SIZE, SCALE } from '../../constants';
 import { GridOverlay } from '../GridOverlay';
 import { SELECTION_Y_OFFSET } from '../../constants';
 
@@ -21,6 +21,8 @@ interface WorldMeshProps {
   showGrid?: boolean;
   disablePainting?: boolean;
   wireframe?: boolean;
+  showNormals?: boolean;
+  cameraHeight?: number;
 }
 
 export function WorldMesh({ 
@@ -33,6 +35,8 @@ export function WorldMesh({
   showGrid = false,
   disablePainting,
   wireframe,
+  showNormals = false,
+  cameraHeight,
 }: WorldMeshProps) {
   const [mouseDownPos, setMouseDownPos] = useState<{ x: number; y: number } | null>(null);
   const [paintingMouseDownPos, setPaintingMouseDownPos] = useState<{ x: number; y: number } | null>(null);
@@ -46,6 +50,7 @@ export function WorldMesh({
   const selectedTriangleGeometry = useSelectedTriangleGeometry(triangleMap, selectedFaceIndex);
 
   const selectedTriangle = triangleMap?.[selectedFaceIndex];
+  console.log(cameraHeight);
 
   // Update triangleMap in global state whenever it changes
   useEffect(() => {
@@ -101,6 +106,64 @@ export function WorldMesh({
       }
     }
   }, [canvas, debugCanvasRef]);
+
+  // Create normal visualization geometry
+  const normalLinesGeometry = useMemo(() => {
+    if (!geometry || !showNormals || !worldmap || !triangleMap) return null;
+
+    // Count total vertices to allocate buffer
+    let totalVertices = 0;
+    for (let row = 0; row < worldmap.length; row++) {
+      for (let col = 0; col < worldmap[row].length; col++) {
+        totalVertices += worldmap[row][col].vertices.length;
+      }
+    }
+
+    const linePositions = new Float32Array(totalVertices * 6); // 2 points per normal line (start and end)
+    let offset = 0;
+
+    // Process each mesh in the worldmap
+    for (let row = 0; row < worldmap.length; row++) {
+      for (let col = 0; col < worldmap[row].length; col++) {
+        const mesh = worldmap[row][col];
+        const offsetX = col * MESH_SIZE;
+        const offsetZ = row * MESH_SIZE;
+
+        // For each vertex in the mesh
+        for (let i = 0; i < mesh.vertices.length; i++) {
+          const vertex = mesh.vertices[i];
+          const normal = mesh.normals[i];
+
+          // Scale factor for normal visualization
+          const normalScale = 500;
+
+          // Start point of the line (vertex position)
+          const startX = (vertex.x + offsetX) * SCALE;
+          const startY = vertex.y * SCALE;
+          const startZ = (vertex.z + offsetZ) * SCALE;
+
+          // End point of the line (vertex + scaled normal)
+          const endX = startX - normal.x * SCALE * normalScale / 4096;
+          const endY = startY - normal.y * SCALE * normalScale / 4096;
+          const endZ = startZ - normal.z * SCALE * normalScale / 4096;
+
+          // Add line segment
+          linePositions[offset] = startX;
+          linePositions[offset + 1] = startY;
+          linePositions[offset + 2] = startZ;
+          linePositions[offset + 3] = endX;
+          linePositions[offset + 4] = endY;
+          linePositions[offset + 5] = endZ;
+
+          offset += 6;
+        }
+      }
+    }
+
+    const normalGeometry = new THREE.BufferGeometry();
+    normalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+    return normalGeometry;
+  }, [geometry, showNormals, worldmap, triangleMap]);
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (showGrid) return;
@@ -165,6 +228,10 @@ export function WorldMesh({
 
   if (!geometry || !triangleMap) return null;
 
+  const wireframeOpacity = cameraHeight 
+    ? Math.max(0, 0.3 * (1 - Math.max(0, (cameraHeight - 1000) / 5000)))
+    : 0.2;
+
   return (
     <group>
       <group 
@@ -192,16 +259,28 @@ export function WorldMesh({
             )}
           </mesh>
           {wireframe && (
-            <mesh geometry={geometry} renderOrder={8}>
+            <mesh geometry={geometry} renderOrder={10}>
               <meshBasicMaterial 
                 color="#000000"
                 wireframe={true}
                 transparent={true}
-                opacity={0.2}
-                depthTest={false}
-                depthWrite={false}
+                opacity={wireframeOpacity}
+                depthTest={true}
+                depthWrite={true}
               />
             </mesh>
+          )}
+          {normalLinesGeometry && (
+            <lineSegments geometry={normalLinesGeometry} renderOrder={11}>
+              <lineBasicMaterial 
+                color="#00ff00" 
+                linewidth={1}
+                transparent={true}
+                opacity={0.5}
+                depthTest={true}
+                depthWrite={true}
+              />
+            </lineSegments>
           )}
           {!showGrid && onTriangleSelect && selectedTriangleGeometry && mode !== 'painting' && (
             <lineSegments renderOrder={10}>
