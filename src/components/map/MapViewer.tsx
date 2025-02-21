@@ -9,7 +9,8 @@ import { CAMERA_HEIGHT, MESH_SIZE, SCALE, SHOW_DEBUG } from './constants';
 import { CameraDebugInfo, CameraDebugOverlay } from './components/DebugOverlay';
 import { MapControls } from './components/MapControls';
 import { WorldMesh } from './components/WorldMesh';
-import { useMapState, MapMode } from '@/hooks/useMapState';
+import { useMapState, MapType, MapMode } from '@/hooks/useMapState';
+import ModelOverlay from './ModelOverlay';
 
 interface MapViewerProps { 
   renderingMode?: RenderingMode,
@@ -17,7 +18,15 @@ interface MapViewerProps {
   isLoading?: boolean,
   showGrid?: boolean,
   cameraType?: 'perspective' | 'orthographic',
-  wireframe?: boolean
+  wireframe?: boolean,
+  showNormals?: boolean,
+  onWireframeToggle?: (checked: boolean) => void,
+  onGridToggle?: (checked: boolean) => void,
+  onRenderingModeChange?: (mode: RenderingMode) => void,
+  onMapTypeChange?: (type: MapType) => void,
+  onModeChange?: (mode: MapMode) => void,
+  enabledAlternatives: number[],
+  onAlternativesChange: (ids: number[], section: { id: number, name: string }) => void,
 }
 
 function MapViewer({ 
@@ -26,16 +35,40 @@ function MapViewer({
   isLoading: externalIsLoading,
   showGrid = false,
   cameraType = "perspective",
-  wireframe = false
+  wireframe = false,
+  showNormals = false,
+  onWireframeToggle,
+  onGridToggle,
+  onRenderingModeChange,
+  onMapTypeChange,
+  onModeChange,
+  enabledAlternatives,
+  onAlternativesChange
 }: MapViewerProps) {
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
   const [debugInfo, setDebugInfo] = useState('');
   const [rotation, setRotation] = useState(0);
+  const [showModels, setShowModels] = useState(true);
+  const [localRenderingMode, setLocalRenderingMode] = useState<RenderingMode>(renderingMode);
   const debugCanvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const perspectiveCameraRef = useRef<ThreePerspectiveCamera>(null);
   const orthographicCameraRef = useRef<ThreeOrthographicCamera>(null);
   const { worldmap, mapType, mode } = useMapState();
+  const zoomRef = useRef(1);
+
+  // Update local rendering mode when prop changes
+  useEffect(() => {
+    setLocalRenderingMode(renderingMode);
+  }, [renderingMode]);
+
+  // Handle rendering mode changes
+  const handleRenderingModeChange = (mode: RenderingMode) => {
+    setLocalRenderingMode(mode);
+    if (onRenderingModeChange) {
+      onRenderingModeChange(mode);
+    }
+  };
 
   useEffect(() => {
     if (!onTriangleSelect) {
@@ -83,8 +116,20 @@ function MapViewer({
     ] as [number, number, number];
 
     if (cameraType === 'orthographic') {
-      const halfWidth = mapDimensions.width / 2 + margin;
-      const halfHeight = mapDimensions.height / 2 + margin;
+      const containerAspect = window.innerWidth / window.innerHeight;
+      const mapAspect = mapDimensions.width / mapDimensions.height;
+      
+      let halfHeight = mapDimensions.height / 2 + margin;
+      let halfWidth = mapDimensions.width / 2 + margin;
+
+      // If container is wider than the map's aspect ratio, fit to height
+      if (containerAspect > mapAspect) {
+        halfWidth = halfHeight * containerAspect;
+      } else {
+        // If container is taller than the map's aspect ratio, fit to width
+        halfHeight = halfWidth / containerAspect;
+      }
+
       return {
         position,
         left: -halfWidth,
@@ -107,9 +152,47 @@ function MapViewer({
     };
   }, [mapDimensions, mapType, cameraType]);
 
+  // Add resize handler
+  useEffect(() => {
+    if (cameraType !== 'orthographic') return;
+
+    const handleResize = () => {
+      const camera = orthographicCameraRef.current;
+      if (!camera || !mapDimensions.width) return;
+
+      const containerAspect = window.innerWidth / window.innerHeight;
+      const mapAspect = mapDimensions.width / mapDimensions.height;
+      const margin = 50;
+      
+      let halfHeight = mapDimensions.height / 2 + margin;
+      let halfWidth = mapDimensions.width / 2 + margin;
+
+      // If container is wider than the map's aspect ratio, fit to height
+      if (containerAspect > mapAspect) {
+        halfWidth = halfHeight * containerAspect;
+      } else {
+        // If container is taller than the map's aspect ratio, fit to width
+        halfHeight = halfWidth / containerAspect;
+      }
+
+      const currentZoom = camera.zoom;
+      camera.left = -halfWidth;
+      camera.right = halfWidth;
+      camera.top = halfHeight;
+      camera.bottom = -halfHeight;
+      camera.zoom = currentZoom;
+      camera.updateProjectionMatrix();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [mapDimensions, cameraType]);
+
   // New helper function to reset camera and controls
+  const camera = cameraType === 'perspective' ? perspectiveCameraRef.current : orthographicCameraRef.current;
   const resetCameraAndControls = () => {
-    const camera = cameraType === 'perspective' ? perspectiveCameraRef.current : orthographicCameraRef.current;
     if (!camera || !mapDimensions.width) return;
     // Reset rotation
     setRotation(0);
@@ -154,50 +237,83 @@ function MapViewer({
   const isLoading = externalIsLoading;
 
   return (
-    <div className="relative w-full h-full">
-      <MapControls onRotate={handleRotate} onReset={resetView} />
+    <div className="relative flex flex-col w-full h-full">
+      <MapControls 
+        onRotate={handleRotate} 
+        onReset={resetView}
+        wireframe={wireframe}
+        onWireframeToggle={onWireframeToggle}
+        showGrid={showGrid}
+        onGridToggle={onGridToggle}
+        showModels={showModels}
+        onModelsToggle={() => setShowModels(prev => !prev)}
+        renderingMode={localRenderingMode}
+        onRenderingModeChange={handleRenderingModeChange}
+        mapType={mapType}
+        onMapTypeChange={onMapTypeChange}
+        mode={mode}
+        onModeChange={onModeChange}
+        enabledAlternatives={enabledAlternatives}
+        onAlternativesChange={onAlternativesChange}
+      />
 
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-          <div className="text-lg text-muted-foreground">Loading map...</div>
-        </div>
-      )}
-
-      <Canvas style={{ width: '100%', height: '100%' }}>
-        {cameraType === 'perspective' ? (
-          <PerspectiveCamera makeDefault {...cameraConfig} ref={perspectiveCameraRef} />
-        ) : (
-          <OrthographicCamera makeDefault {...cameraConfig} ref={orthographicCameraRef} />
+      <div className="relative flex-1">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="text-lg text-muted-foreground">Loading map...</div>
+          </div>
         )}
-        {SHOW_DEBUG && <Stats />}
-        {SHOW_DEBUG && <CameraDebugInfo onDebugInfo={setDebugInfo} />}
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[20000, 40000, 20000]}
-          intensity={1.0}
-          castShadow
-        />
-        <OrbitControls 
-          ref={controlsRef}
-          target={[mapDimensions.center.x, 0, mapDimensions.center.z]}
-          enableDamping={false}
-          makeDefault
-          enableRotate={!['export', 'painting'].includes(mode)}
-        />
-        {worldmap && !isLoading && (
-          <WorldMesh 
-            renderingMode={renderingMode} 
-            onTriangleSelect={handleTriangleSelect}
-            selectedFaceIndex={selectedFaceIndex}
-            debugCanvasRef={debugCanvasRef}
-            mapCenter={mapDimensions.center}
-            rotation={rotation}
-            showGrid={showGrid}
-            wireframe={wireframe}
+
+        <Canvas style={{ width: '100%', height: '100%' }}>
+          {cameraType === 'perspective' ? (
+            <PerspectiveCamera makeDefault {...cameraConfig} ref={perspectiveCameraRef} />
+          ) : (
+            <OrthographicCamera makeDefault {...cameraConfig} ref={orthographicCameraRef} />
+          )}
+          {SHOW_DEBUG && <Stats />}
+          {SHOW_DEBUG && <CameraDebugInfo onDebugInfo={setDebugInfo} />}
+          <ambientLight intensity={0.3} />
+          <directionalLight
+            position={[20000, 40000, 20000]}
+            intensity={1.0}
+            castShadow
           />
-        )}
-      </Canvas>
-      {SHOW_DEBUG && <CameraDebugOverlay debugInfo={debugInfo} />}
+          <OrbitControls 
+            ref={controlsRef}
+            target={[mapDimensions.center.x, 0, mapDimensions.center.z]}
+            enableDamping={false}
+            makeDefault
+            enableRotate={!['export', 'painting'].includes(mode)}
+            onChange={(e) => {
+              if (camera) {
+                if (cameraType === 'orthographic' && camera instanceof ThreeOrthographicCamera) {
+                  zoomRef.current = camera.zoom;
+                } else if (camera instanceof ThreePerspectiveCamera) {
+                  // For perspective camera, calculate zoom based on camera distance
+                  const distance = camera.position.y;
+                  zoomRef.current = CAMERA_HEIGHT[mapType] / distance;
+                }
+              }
+            }}
+          />
+          {worldmap && !isLoading && (
+            <WorldMesh 
+              renderingMode={localRenderingMode} 
+              onTriangleSelect={handleTriangleSelect}
+              selectedFaceIndex={selectedFaceIndex}
+              debugCanvasRef={debugCanvasRef}
+              mapCenter={mapDimensions.center}
+              rotation={rotation}
+              showGrid={mode === 'export' || showGrid}
+              wireframe={wireframe}
+              showNormals={showNormals}
+              cameraHeight={camera?.position.y}
+            />
+          )}
+          {showModels && <ModelOverlay zoomRef={zoomRef} />}
+        </Canvas>
+        {SHOW_DEBUG && <CameraDebugOverlay debugInfo={debugInfo} />}
+      </div>
     </div>
   );
 }
