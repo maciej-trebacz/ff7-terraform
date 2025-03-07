@@ -145,7 +145,6 @@ export class Compiler {
     for (let index = 0; index < tree.length; index++) {
       let item = tree[index];
   
-    //   debugger
       if (parent === null && item !== 'ResetStack') {
         this.line += 1;
       }

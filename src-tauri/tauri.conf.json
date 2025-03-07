@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "FF7 Terraform",
+  "productName": "FF7 Landscaper",
   "version": "0.6.0",
-  "identifier": "org.m4v3r.ff7-terraform",
+  "identifier": "org.m4v3r.ff7-landscaper",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Terraform - FF7 Worldmap Editor",
+        "title": "Landscaper - FF7 Worldmap Editor",
         "theme": "Dark",
         "width": 975,
         "height": 600

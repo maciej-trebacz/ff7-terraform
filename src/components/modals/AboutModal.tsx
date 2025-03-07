@@ -10,7 +10,7 @@ export function AboutModal({ isOpen, setIsOpen }: AboutModalProps) {
     <Modal
       open={isOpen}
       setIsOpen={setIsOpen}
-      title="FF7 Terraform"
+      title="FF7 Landscaper"
       size="sm"
       callback={() => {}}
     >

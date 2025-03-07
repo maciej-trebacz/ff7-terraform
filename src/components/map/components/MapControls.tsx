@@ -58,7 +58,6 @@ export function MapControls({
       {/* Left side - Rendering options and toggles */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground font-medium">Mode:</span>
           <div className="flex items-center gap-1">
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -212,18 +211,13 @@ export function MapControls({
               </Tooltip>
             </TooltipProvider>
           )}
-        </div>
-
-        <div className="h-3.5 w-[1px] bg-border" />
-
-        <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className="h-6 relative text-xs font-normal px-2"
               >
-                <Map className="h-3.5 w-3.5" /> Alternative sections
+                <Map className="h-3.5 w-3.5" /> Alternatives
                 {enabledAlternatives.length > 0 && (
                   <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center">
                     {enabledAlternatives.length}
@@ -259,6 +253,7 @@ export function MapControls({
             </PopoverContent>
           </Popover>
         </div>
+
 
       </div>
 

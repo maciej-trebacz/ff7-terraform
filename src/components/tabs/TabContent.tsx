@@ -19,7 +19,7 @@ export function TabContent() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <TabsContent value="map" className="flex-1 data-[state=active]:flex">
+      <TabsContent value="map" className="flex-1 data-[state=active]:flex min-h-0">
         <MapTab />
       </TabsContent>
       <TabsContent value="messages" className="flex-1 data-[state=active]:flex overflow-y-auto">
@@ -28,7 +28,7 @@ export function TabContent() {
       <TabsContent value="encounters" className="flex-1 data-[state=active]:flex">
         <EncountersTab />
       </TabsContent>
-      <TabsContent value="scripts" className="flex-1 data-[state=active]:flex">
+      <TabsContent value="scripts" className="flex-1 data-[state=active]:flex min-h-0">
         <ScriptsTab />
       </TabsContent>
       <TabsContent value="textures" className="flex-1 data-[state=active]:flex overflow-y-auto">

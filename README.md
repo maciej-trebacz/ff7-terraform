@@ -1,2 +1,2 @@
-# Terraform - FF7 Worldmap Editor
+# Landscaper - FF7 Worldmap Editor
 

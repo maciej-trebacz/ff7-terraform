@@ -132,7 +132,7 @@ export function Navbar() {
           <TabsTrigger value="map" disabled={!opened}>Map</TabsTrigger>
           <TabsTrigger value="textures" disabled={!opened}>Textures</TabsTrigger>
           <ComingSoonTab value="encounters">Encounters</ComingSoonTab>
-          <ComingSoonTab value="scripts">Scripts</ComingSoonTab>
+          <TabsTrigger value="scripts" disabled={!opened}>Scripts</TabsTrigger>
         </TabsList>
       </nav>
 
