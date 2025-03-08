@@ -1,5 +1,5 @@
 import { Parser } from 'binary-parser';
-import { Opcodes, Mnemonic } from './worldscript/opcodes';
+import { Opcodes, Mnemonic } from './opcodes';
 
 const opcodes = new Parser()
     .array('', {
@@ -150,7 +150,7 @@ export class EvFile {
         return out.join("\n");
     }
 
-    encodeOpcodes(script: string): Uint8Array {
+    encodeOpcodes(script: string): number[] {
         const lines = script.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
         // Create a reverse lookup from mnemonic to opcode
@@ -179,10 +179,8 @@ export class EvFile {
             totalSize += def.codeParams * 2; // parameters
         }
 
-        // Create buffer and DataView
-        const buffer = new ArrayBuffer(totalSize);
-        const view = new DataView(buffer);
-        let offset = 0;
+        // Initialize result array
+        const result: number[] = [];
 
         for (let lineNum = 0; lineNum < lines.length; lineNum++) {
             const line = lines[lineNum];
@@ -207,9 +205,8 @@ export class EvFile {
                     );
                 }
                 
-                // Write opcode as 16-bit little-endian
-                view.setUint16(offset, opcode, true);
-                offset += 2;
+                // Add opcode to the array
+                result.push(opcode);
                 
                 // CALL_FN_X takes parameters from the stack, not from code
                 if (params.length > 0) {
@@ -229,9 +226,8 @@ export class EvFile {
 
             const def = Opcodes[opcode];
             
-            // Write opcode as 16-bit little-endian
-            view.setUint16(offset, opcode, true);
-            offset += 2;
+            // Add opcode to the array
+            result.push(opcode);
 
             // Validate and parse parameters
             if (def.codeParams > 0) {
@@ -250,9 +246,8 @@ export class EvFile {
                     }
 
                     const value = parseInt(param, 16);
-                    // Write parameter as 16-bit little-endian
-                    view.setUint16(offset, value, true);
-                    offset += 2;
+                    // Add parameter to the array
+                    result.push(value);
                 }
             } else if (params.length > 0) {
                 throw new Error(
@@ -261,7 +256,7 @@ export class EvFile {
             }
         }
 
-        return new Uint8Array(buffer);
+        return result;
     }
 
     getSystemFunctions(): SystemFunction[] {
@@ -285,6 +280,10 @@ export class EvFile {
             const meshCoords = Math.floor(fn.x) * 36 + Math.floor(fn.y);
             return (2 << 14) | (meshCoords << 4) | fn.id;
         }
+    }
+
+    setFunctionOpcodes(index: number, opcodes: number[]) {
+        this.functions[index].opcodes = opcodes;
     }
 
     writeFile() {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { EvFile, FunctionType } from './evfile';
 import fs from 'fs';
 import path from 'path';
+import { Worldscript } from './worldscript';
 
 describe('EvFile', () => {
   let evFile: EvFile;
@@ -13,10 +14,6 @@ describe('EvFile', () => {
   });
   
   it('should parse the file correctly', () => {
-    const id = 41;
-    console.log(`Found function at offset ${id}`);
-    console.log(evFile.functions[id].opcodes?.map(op => op.toString(16).padStart(4, '0').toUpperCase()).join(' '));
-    console.log(evFile.functions[id].script, evFile.functions[id].offset);
     expect(evFile).toBeInstanceOf(EvFile);
     expect(evFile.functions.length).toBeGreaterThan(0);
   });
@@ -63,21 +60,14 @@ describe('EvFile', () => {
     // Encode script back to opcodes
     const encodedData = evFile.encodeOpcodes(script);
     
-    // Convert the Uint8Array to 16-bit values
-    const reEncodedOpcodes = [];
-    const view = new DataView(encodedData.buffer);
-    for (let i = 0; i < encodedData.length; i += 2) {
-      reEncodedOpcodes.push(view.getUint16(i, true)); // true for little-endian
-    }
-    
     // The re-encoded opcodes should exactly match the original opcodes
-    expect(reEncodedOpcodes.length).toBe(knownOpcodes.length);
+    expect(encodedData.length).toBe(knownOpcodes.length);
     
     // Compare each opcode individually
     for (let i = 0; i < knownOpcodes.length; i++) {
       expect(
-        reEncodedOpcodes[i],
-        `Opcode at index ${i} doesn't match: expected 0x${knownOpcodes[i].toString(16)} but got 0x${reEncodedOpcodes[i].toString(16)}`
+        encodedData[i],
+        `Opcode at index ${i} doesn't match: expected 0x${knownOpcodes[i].toString(16)} but got 0x${encodedData[i].toString(16)}`
       ).toBe(knownOpcodes[i]);
     }
   });
@@ -93,21 +83,14 @@ describe('EvFile', () => {
     // Encode script back to opcodes
     const encodedData = evFile.encodeOpcodes(script);
     
-    // Convert the Uint8Array to 16-bit values
-    const reEncodedOpcodes = [];
-    const view = new DataView(encodedData.buffer);
-    for (let i = 0; i < encodedData.length; i += 2) {
-      reEncodedOpcodes.push(view.getUint16(i, true)); // true for little-endian
-    }
-    
     // The re-encoded opcodes should exactly match the original opcodes
-    expect(reEncodedOpcodes.length).toBe(specialOpcodes.length);
+    expect(encodedData.length).toBe(specialOpcodes.length);
     
     // Compare each opcode individually
     for (let i = 0; i < specialOpcodes.length; i++) {
       expect(
-        reEncodedOpcodes[i],
-        `Opcode at index ${i} doesn't match: expected 0x${specialOpcodes[i].toString(16)} but got 0x${reEncodedOpcodes[i].toString(16)}`
+        encodedData[i],
+        `Opcode at index ${i} doesn't match: expected 0x${specialOpcodes[i].toString(16)} but got 0x${encodedData[i].toString(16)}`
       ).toBe(specialOpcodes[i]);
     }
     
@@ -126,10 +109,9 @@ describe('EvFile', () => {
       expect(decodedScript).toBe(expectedScript);
       
       const reEncodedData = evFile.encodeOpcodes(decodedScript);
-      const reDecodedView = new DataView(reEncodedData.buffer);
       
       // Check if re-encoded data matches original opcode
-      expect(reDecodedView.getUint16(0, true)).toBe(opcode);
+      expect(reEncodedData[0]).toBe(opcode);
     }
   });
   
@@ -142,5 +124,19 @@ describe('EvFile', () => {
     expect(newEvFile.getSystemFunctions().length).toBe(evFile.getSystemFunctions().length);
     expect(newEvFile.getModelFunctions().length).toBe(evFile.getModelFunctions().length);
     expect(newEvFile.getMeshFunctions().length).toBe(evFile.getMeshFunctions().length);
+  });
+
+  it('should read a script, decompile, compile, write, and read it back correctly', () => {
+    const system0Script = evFile.functions[0].script;
+    const worldscript = new Worldscript(1);
+    const decompiled = worldscript.decompile(system0Script);
+    const compiled = worldscript.compile(decompiled);
+    const encoded = evFile.encodeOpcodes(compiled);
+    evFile.setFunctionOpcodes(0, encoded);
+    const writtenData = evFile.writeFile();
+    const newEvFile = new EvFile(writtenData);
+    const newSystem0Script = newEvFile.functions[0].script;
+    expect(newSystem0Script).toBe(system0Script);
+    expect(evFile.functions[0].opcodes).toEqual(encoded);
   });
 });

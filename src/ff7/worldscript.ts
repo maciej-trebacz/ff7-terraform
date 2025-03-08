@@ -1,4 +1,4 @@
-import { OpcodeDefinition, Opcodes, Mnemonic, Namespace } from "./worldscript/opcodes";
+import { OpcodeDefinition, Opcodes, Mnemonic, Namespace } from "./opcodes";
 
 // AST Node Interfaces
 interface BaseExpression {
