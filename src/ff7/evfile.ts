@@ -72,7 +72,11 @@ export class EvFile {
                 data.aliasId = originalFn.id;
                 delete data.opcodes;
             } else {
-                data.script = this.decodeOpcodes(data.opcodes!);
+                // Ensure opcodes is an array, even if empty
+                if (!data.opcodes) {
+                    data.opcodes = [];
+                }
+                data.script = this.decodeOpcodes(data.opcodes);
             }
             this.functions.push(data as FF7Function);
         }
@@ -117,6 +121,15 @@ export class EvFile {
 
         for (let i = 0; i < opcodes.length; i++) {
             const opcode = opcodes[i];
+            
+            // Special case for opcodes in range 0x204-0x22f (CALL_FN_X)
+            if (opcode >= 0x204 && opcode <= 0x22F) {
+                const fnNumber = opcode - 0x204;
+                const mnemonic = `CALL_FN_${fnNumber}`;
+                out.push(mnemonic);
+                continue;
+            }
+            
             if (!(opcode in Opcodes)) continue;
 
             const def = Opcodes[opcode];
@@ -150,6 +163,13 @@ export class EvFile {
         let totalSize = 0;
         for (let lineNum = 0; lineNum < lines.length; lineNum++) {
             const [mnemonic] = lines[lineNum].split(' ');
+            
+            // Special case for CALL_FN_X mnemonics
+            if (mnemonic.startsWith('CALL_FN_')) {
+                totalSize += 2; // opcode only, no parameters
+                continue;
+            }
+            
             const opcode = mnemonicToOpcode.get(mnemonic as Mnemonic);
             if (opcode === undefined) {
                 throw new Error(`Line ${lineNum + 1}: Unknown mnemonic "${mnemonic}"`);
@@ -168,6 +188,39 @@ export class EvFile {
             const line = lines[lineNum];
             const [mnemonic, ...params] = line.split(' ');
 
+            // Special case for CALL_FN_X mnemonics
+            if (mnemonic.startsWith('CALL_FN_')) {
+                // Extract the function number from the mnemonic
+                const fnNumberMatch = mnemonic.match(/CALL_FN_(\d+)/);
+                if (!fnNumberMatch) {
+                    throw new Error(`Line ${lineNum + 1}: Invalid CALL_FN mnemonic format "${mnemonic}"`);
+                }
+                
+                const fnNumber = parseInt(fnNumberMatch[1], 10);
+                // Calculate the opcode: 0x204 + function number
+                const opcode = 0x204 + fnNumber;
+                
+                // Validate opcode range
+                if (opcode < 0x204 || opcode > 0x22F) {
+                    throw new Error(
+                        `Line ${lineNum + 1}: Function number ${fnNumber} out of valid range (0-43)`
+                    );
+                }
+                
+                // Write opcode as 16-bit little-endian
+                view.setUint16(offset, opcode, true);
+                offset += 2;
+                
+                // CALL_FN_X takes parameters from the stack, not from code
+                if (params.length > 0) {
+                    throw new Error(
+                        `Line ${lineNum + 1}: ${mnemonic} takes parameters from the stack, not from code`
+                    );
+                }
+                
+                continue;
+            }
+            
             // Find the opcode for this mnemonic
             const opcode = mnemonicToOpcode.get(mnemonic as Mnemonic);
             if (opcode === undefined) {
@@ -223,13 +276,14 @@ export class EvFile {
         return this.functions.filter((fn): fn is MeshFunction => fn.type === FunctionType.Mesh);
     }
 
-    private calculateHeader(fn: FF7Function): number {
+    calculateHeader(fn: FF7Function): number {
         if (fn.type === FunctionType.System) {
             return fn.id;
         } else if (fn.type === FunctionType.Model) {
             return (1 << 14) | (fn.modelId << 8) | fn.id;
         } else { // mesh
-            return (2 << 14) | ((Math.floor(fn.x) + Math.floor(fn.y) * 36) << 4) | fn.id;
+            const meshCoords = Math.floor(fn.x) * 36 + Math.floor(fn.y);
+            return (2 << 14) | (meshCoords << 4) | fn.id;
         }
     }
 
@@ -246,6 +300,9 @@ export class EvFile {
             return this.calculateHeader(a) - this.calculateHeader(b);
         });
 
+        // Create a map to track function offsets for aliases
+        const functionOffsets = new Map<number, number>();
+
         // Write call table (0x400 bytes = 256 entries of 4 bytes each)
         let tableOffset = 0;
         
@@ -260,14 +317,38 @@ export class EvFile {
 
             // Write function header and instruction pointer
             view.setUint16(tableOffset, header, true);
-            view.setUint16(tableOffset + 2, (codeOffset - 0x400) / 2, true);
+            
+            // If this is an alias, point to the original function's offset
+            if (fn.aliasId !== undefined) {
+                const originalOffset = functionOffsets.get(fn.aliasId);
+                if (originalOffset !== undefined) {
+                    view.setUint16(tableOffset + 2, originalOffset, true);
+                } else {
+                    // If original function not found, just use current offset
+                    view.setUint16(tableOffset + 2, (codeOffset - 0x400) / 2, true);
+                }
+            } else {
+                // Store this function's offset for potential aliases
+                if (fn.id !== undefined) {
+                    functionOffsets.set(fn.id, (codeOffset - 0x400) / 2);
+                }
+                
+                view.setUint16(tableOffset + 2, (codeOffset - 0x400) / 2, true);
+                
+                // Write function opcodes if they exist
+                if (fn.opcodes && fn.opcodes.length > 0) {
+                    fn.opcodes.forEach(opcode => {
+                        view.setUint16(codeOffset, opcode, true);
+                        codeOffset += 2;
+                    });
+                } else {
+                    // For functions without opcodes, write a return instruction (0xCB)
+                    view.setUint16(codeOffset, 0xCB, true);
+                    codeOffset += 2;
+                }
+            }
+            
             tableOffset += 4;
-
-            // Write function opcodes
-            fn.opcodes.forEach(opcode => {
-                view.setUint16(codeOffset, opcode, true);
-                codeOffset += 2;
-            });
         });
 
         // Fill remaining call table entries with 0xFFFF/0
