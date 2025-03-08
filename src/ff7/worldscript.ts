@@ -422,13 +422,18 @@ export class Worldscript {
   }
 
   private processSingleLine(lineIndex: number, includeMetadata: boolean): { statement: Statement | null; nextLine: number | null } {
+    // Skip processing if the line has already been processed
+    if (this.processedLines.has(lineIndex)) {
+      return { statement: null, nextLine: null };
+    }
+  
     this.processedLines.add(lineIndex);
     const offset = this.lineOffsets[lineIndex];
     const statements: Statement[] = [];
     if (this.jumpTargets.has(offset)) {
       statements.push({ type: 'Label', label: `label_${offset.toString(16)}` });
     }
-
+  
     const line = this.opcodeLines[lineIndex];
     const tokens = this.parseLine(line, lineIndex + 1);
     const mnemonic = tokens[0];
@@ -436,10 +441,10 @@ export class Worldscript {
     const opcode = this.mnemonicToOpcode[mnemonic];
     const lineNumber = lineIndex + 1;
     this.logStackState(`Before ${mnemonic}`, lineNumber, offset);
-
+  
     let nextLine: number | null = null;
     let statement: Statement | null = null;
-
+  
     if (opcode.mnemonic === Mnemonic.RESET || opcode.mnemonic === Mnemonic.NOP) {
       // No statement generated
     } else if (opcode.mnemonic === Mnemonic.GOTO) {
@@ -448,38 +453,35 @@ export class Worldscript {
       nextLine = this.findLineByOffset(target);
     } else if (opcode.mnemonic === Mnemonic.GOTO_IF_FALSE) {
       const condition = this.stack.pop() as Expression;
-      const target = parseInt(codeParams[0], 16);
-      const targetLine = this.findLineByOffset(target);
+      const targetOffset = parseInt(codeParams[0], 16);
+      const targetLine = this.findLineByOffset(targetOffset);
       if (targetLine === -1) {
-        throw new Error(`Target offset ${target.toString(16)} not found at line ${lineNumber}`);
+        throw new Error(`Target offset ${targetOffset.toString(16)} not found at line ${lineNumber}`);
       }
       const thenBranch: Statement[] = [];
       let j = lineIndex + 1;
-      while (j < this.opcodeLines.length && j < targetLine) {
-        if (j === -1) {
-          throw new Error(`Tried to read a non-existent line at ${lineNumber} while looking for target ${target.toString(16)}`);
-        }
+      while (j < this.opcodeLines.length && this.lineOffsets[j] < targetOffset) {
         const result = this.processSingleLine(j, includeMetadata);
         if (result.statement) {
           thenBranch.push(result.statement);
         }
-        j = result.nextLine !== null ? result.nextLine : j + 1;
+        j++;
       }
       statement = { type: 'If', condition, thenBranch };
       nextLine = targetLine;
     } else {
       this.handleOpcode(opcode, codeParams, lineNumber, offset, statements);
     }
-
+  
     this.logStackState(`After ${mnemonic}`, lineNumber, offset);
-    
+  
     // If we have a statement from one of the special cases and statements from handleOpcode or a label
     if (statement && statements.length > 0) {
       // Add the statement to the end of the statements array
       statements.push(statement);
       statement = null;
     }
-    
+  
     // Return all statements or the single statement
     if (statements.length > 1) {
       // If we have multiple statements, return them as a block
@@ -525,6 +527,49 @@ export class Worldscript {
     } else if (opcode.mnemonic.startsWith('PUSH_')) {
       const expr = this.generatePushExpression(opcode, codeParams);
       this.stack.push(expr);
+    } else if (opcode.mnemonic === Mnemonic.WAIT && this.stack.length > 0 && 
+               this.stack[this.stack.length - 1].type === 'FunctionCall' && 
+               (this.stack[this.stack.length - 1] as FunctionCallExpression).callee.type === 'Member') {
+      // Special case for WAIT following WAIT_FRAMES
+      const topExpr = this.stack[this.stack.length - 1] as FunctionCallExpression;
+      const callee = topExpr.callee as MemberExpression;
+      const property = callee.property as IdentifierExpression;
+      
+      if (property.name === 'wait_frames' && 
+          callee.object.type === 'Identifier' && 
+          (callee.object as IdentifierExpression).name === 'System') {
+        // Pop the wait_frames expression
+        this.stack.pop();
+        
+        // Create a direct wait call with the frame count argument
+        const callExpr: FunctionCallExpression = {
+          type: 'FunctionCall',
+          callee: { 
+            type: 'Member', 
+            object: { type: 'Identifier', name: 'System' }, 
+            property: { type: 'Identifier', name: 'wait' } 
+          },
+          arguments: topExpr.arguments // Use the arguments from wait_frames directly
+        };
+        
+        statements.push({ type: 'ExpressionStatement', expression: callExpr });
+      } else {
+        // Handle normal WAIT opcode
+        const params: Expression[] = [];
+        if (this.stack.length < opcode.stackParams) {
+          throw new Error(`Stack underflow for ${opcode.mnemonic} at line ${lineNumber}`);
+        }
+        for (let j = 0; j < opcode.stackParams; j++) {
+          params.push(this.stack.pop() as Expression);
+        }
+        params.reverse();
+        const callExpr: FunctionCallExpression = {
+          type: 'FunctionCall',
+          callee: { type: 'Member', object: { type: 'Identifier', name: opcode.namespace }, property: { type: 'Identifier', name: opcode.name } },
+          arguments: params
+        };
+        statements.push({ type: 'ExpressionStatement', expression: callExpr });
+      }
     } else if (opcode.pushesResult) {
       const params: Expression[] = [];
       if (this.stack.length < opcode.stackParams) {
@@ -567,6 +612,7 @@ export class Worldscript {
     const param = codeParams[0];
     const value = parseInt(param, 16);
     let address = parseInt(param, 16) + 0xBA4;
+    let bit;
     
     // Create a member expression with Savemap as the object
     const createSavemapMember = (propertyName: string): MemberExpression => ({
@@ -590,7 +636,7 @@ export class Worldscript {
         
       case Mnemonic.PUSH_SAVEMAP_BIT:
         address = Math.floor(value / 8) + 0xBA4;
-        const bit = value % 8;
+        bit = value % 8;
         const mappedBitName = savemapMapping[address];
         
         return createSavemapMember(
@@ -604,6 +650,14 @@ export class Worldscript {
           type: 'Member',
           object: { type: 'Identifier', name: 'Special' },
           property: { type: 'Identifier', name: propertyName }
+        };
+      case Mnemonic.PUSH_SPECIAL_BIT:
+        address = Math.floor(value / 8);
+        bit = value % 8;
+        return {
+          type: 'Member',
+          object: { type: 'Identifier', name: 'Special' },
+          property: { type: 'Identifier', name: `bit(${address}, ${bit})` }
         };
       default:
         return {
@@ -629,7 +683,9 @@ export class Worldscript {
         [Mnemonic.AND]: '&',
         [Mnemonic.OR]: '|',
         [Mnemonic.LAND]: 'and',
-        [Mnemonic.LOR]: 'or'
+        [Mnemonic.LOR]: 'or',
+        [Mnemonic.SHL]: '<<',
+        [Mnemonic.SHR]: '>>'
       };
       const operator = operatorMap[opcode.mnemonic];
       if (operator) {
@@ -818,12 +874,12 @@ export class Worldscript {
 
   private tokenize(code: string): Token[] {
     const tokens: Token[] = [];
-    const regex = /\s*(::|<=|>=|==|!=|<|>|or|and|!|-|[\w]+|\d+|[\.\(\),=:])\s*/g;
+    const regex = /\s*(::|<=|>=|==|!=|<<|>>|<|>|or|and|!|-|\+|\*|\/|[\w]+|\d+|[\.\(\),=:])\s*/g;
     let match;
     while ((match = regex.exec(code)) !== null) {
       const value = match[1];
       if (value === '::') tokens.push({ type: 'label_delim', value });
-      else if (['<=', '>=', '==', '!=', '<', '>', 'or', 'and', '!', '-'].includes(value)) tokens.push({ type: 'operator', value });
+      else if (['<=', '>=', '==', '!=', '<', '>', 'or', 'and', '!', '-', '+', '<<', '>>', '*', '/'].includes(value)) tokens.push({ type: 'operator', value });
       else if (value.match(/^\d+$/)) tokens.push({ type: 'number', value });
       else if (value.match(/^0x[0-9a-fA-F]+$/)) tokens.push({ type: 'number', value });
       else if (value.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
@@ -888,6 +944,20 @@ export class Worldscript {
       instructions.push(...this.generateExpression(valueExpr));
       instructions.push({ type: 'instruction', mnemonic: 'WRITE', codeParams: [] });
       return instructions;
+    } else if (objectName === 'System' && functionName === 'wait') {
+      // Special case for System.wait() - generate both WAIT_FRAMES and WAIT opcodes
+      if (expr.arguments.length !== 1) throw new Error('System.wait expects exactly one argument.');
+      const frameCountExpr = expr.arguments[0];
+      const instructions: Instruction[] = [];
+      
+      // Generate code to push the frame count
+      instructions.push(...this.generateExpression(frameCountExpr));
+      
+      // Generate WAIT_FRAMES followed by WAIT
+      instructions.push({ type: 'instruction', mnemonic: 'WAIT_FRAMES', codeParams: [] });
+      instructions.push({ type: 'instruction', mnemonic: 'WAIT', codeParams: [] });
+      
+      return instructions;
     } else {
       const opcode = this.getOpcodeForFunctionCall(callee);
       if (opcode.pushesResult) throw new Error(`Function ${objectName}.${functionName} pushes a result and cannot be used as a statement.`);
@@ -919,7 +989,9 @@ export class Worldscript {
     if (['Savemap', 'Special', 'Temp'].includes(objectName) && ['bit', 'byte', 'word'].includes(functionName)) {
       const base = this.namespaceBases[objectName] || 0;
       if (functionName === 'bit') {
-        if (expr.arguments.length !== 2) throw new Error(`${objectName}.bit expects two arguments`);
+        if (expr.arguments.length !== 2) {
+          throw new Error(`${objectName}.bit expects two arguments`);
+        }
         const [addressExpr, bitExpr] = expr.arguments;
         if (addressExpr.type !== 'Literal' || bitExpr.type !== 'Literal') throw new Error('Arguments to bit must be literals');
         const address = Number(addressExpr.value);
@@ -950,7 +1022,7 @@ export class Worldscript {
     const rightInstructions = this.generateExpression(expr.right);
     const operatorMnemonic: Record<string, string> = {
       '+': 'ADD', '-': 'SUB', '*': 'MUL', '<': 'LT', '>': 'GT', '<=': 'LE', '>=': 'GE', '==': 'EQ',
-      '&': 'AND', '|': 'OR', 'and': 'LAND', 'or': 'LOR'
+      '&': 'AND', '|': 'OR', 'and': 'LAND', 'or': 'LOR', '<<': 'SHL', '>>': 'SHR'
     };
     const mnemonic = operatorMnemonic[expr.operator];
     if (!mnemonic) throw new Error(`Unsupported operator: ${expr.operator}`);
@@ -1161,15 +1233,24 @@ class Parser {
         return 1;
       case 'and':
         return 2;
-      case '==':
-      case '!=':
       case '<':
       case '>':
       case '<=':
       case '>=':
+      case '==':
+      case '!=':
         return 3;
+      case '<<':
+      case '>>':
+        return 4;
+      case '+':
+      case '-':
+        return 5;
+      case '*':
+      case '/':
+        return 6;
       default:
-        return 0; // Unknown operators get lowest precedence
+        return 0;
     }
   }
 

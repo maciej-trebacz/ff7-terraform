@@ -103,6 +103,103 @@ return`;
     expect(result.trim()).toBe(expected);
   });
 
+  it('should decompile system function 2 correctly (contains back-reference goto)', () => {
+    const filePath = path.resolve('data/wm0.ev');
+    const fileData = fs.readFileSync(filePath);
+    const evFile = new EvFile(new Uint8Array(fileData.buffer));
+    const script = evFile.functions[2].script;
+    worldscript = new Worldscript(evFile.functions[2].offset);
+    const result = worldscript.decompile(script);
+
+    const expected = `
+if Savemap.byte(0xF25) then
+  Memory.write(Savemap.byte(0xF25), Savemap.byte(0xF25) - 1)
+  if Savemap.byte(0xF25) == 0 then
+    System.reset_zolom()
+  end
+end
+return
+`;
+
+    expect(result.trim()).toBe(expected.trim());
+  })  
+
+  it('should decompile system function 15 correctly (contains back-reference goto)', () => {
+    const filePath = path.resolve('data/wm0.ev');
+    const fileData = fs.readFileSync(filePath);
+    const evFile = new EvFile(new Uint8Array(fileData.buffer));
+    const script = evFile.functions[15].script;
+    worldscript = new Worldscript(evFile.functions[15].offset);
+    const result = worldscript.decompile(script);
+
+    const expected = `
+System.set_control_lock(0)
+System.set_encounters(0)
+Entity.face_point(3)
+if !Savemap.bit(0xF28, 2) then
+  Window.wait_until_ready()
+  Window.set_dimensions(100, 160, 120, 41)
+  Window.set_params(0, 1)
+  Window.wait_until_ready()
+  Window.set_message(20)
+  Entity.play_animation(6, 0)
+  Entity.set_movespeed(20)
+  System.wait(40)
+  Window.wait_until_ready()
+  Window.wait_until_ready()
+  Window.set_dimensions(110, 160, 100, 41)
+  Window.set_params(0, 1)
+  Window.wait_until_ready()
+  Window.set_message(21)
+  Entity.play_animation(0, 1)
+  Entity.set_movespeed(20)
+  Entity.set_direction_facing(Special.entity_direction + 128)
+  ::label_e9a::
+  if Special.value_0D then
+    System.wait(1)
+    goto label_e9a
+  end
+  Window.wait_until_ready()
+  Entity.set_movespeed(0)
+  System.wait(10)
+  Entity.set_direction_facing(Special.entity_direction + 128)
+  Entity.play_animation(7, 0)
+  Window.wait_until_ready()
+  Window.set_dimensions(70, 160, 180, 57)
+  Window.set_params(0, 0)
+  Window.wait_until_ready()
+  Window.set_message(22)
+  Window.wait_for_acknowledge()
+  Memory.write(Savemap.bit(0xF28, 2), 1)
+  goto label_f20
+end
+Entity.set_movespeed(40)
+Entity.set_direction_facing(Special.entity_direction + 128)
+::label_ee7::
+if Special.value_0D then
+  System.wait(1)
+  goto label_ee7
+end
+Entity.set_movespeed(0)
+System.wait(10)
+Entity.set_direction_facing(Special.entity_direction + 128)
+Entity.play_animation(7, 0)
+Window.wait_until_ready()
+Window.set_dimensions(30, 160, 260, 57)
+Window.set_params(0, 0)
+Window.wait_until_ready()
+Window.set_message(23)
+Window.wait_for_acknowledge()
+::label_f20::
+Entity.play_animation(0, 1)
+System.set_control_lock(1)
+System.set_encounters(1)
+return
+`;
+
+    expect(result.trim()).toBe(expected.trim());
+  })
+
   it('should handle scripts with model related opcodes', () => {
     worldscript = new Worldscript(0x2BD2);
     const script = `
@@ -190,9 +287,9 @@ Entity.set_walk_speed(20)
 Entity.set_direction_facing(Special.entity_direction)
 Entity.set_movement_direction(Special.entity_direction + 128)
 System.fade_out(250, 0)
-System.wait(System.wait_frames(3))
+System.wait(3)
 System.fade_in(250, 0)
-System.wait(System.wait_frames(3))
+System.wait(3)
 Entity.set_movespeed(0)
 return`;
 
@@ -248,6 +345,34 @@ PLAY_SFX
 
     const result = worldscript.decompile(script);
     expect(result.trim()).toBe(expected);
+  });
+
+  it('should correctly handle simplified wait calls', () => {
+    // Original script with WAIT_FRAMES and WAIT
+    const originalScript = `
+RESET
+PUSH_CONSTANT 1E
+WAIT_FRAMES
+WAIT
+RETURN`;
+
+    // Decompile the script
+    const worldscript = new Worldscript(0);
+    const decompiled = worldscript.decompile(originalScript);
+    
+    // Verify the decompiled script has the simplified System.wait(30) format
+    expect(decompiled.trim()).toBe('System.wait(30)\nreturn');
+    
+    // Recompile the decompiled script
+    const recompiled = worldscript.compile(decompiled);
+    
+    // Verify the recompiled script has both WAIT_FRAMES and WAIT opcodes
+    expect(recompiled.trim()).toContain('WAIT_FRAMES');
+    expect(recompiled.trim()).toContain('WAIT');
+    
+    // Decompile the recompiled script to verify it's the same as the original decompiled script
+    const redecompiled = worldscript.decompile(recompiled);
+    expect(redecompiled.trim()).toBe('System.wait(30)\nreturn');
   });
 });
 

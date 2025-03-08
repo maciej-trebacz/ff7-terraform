@@ -127,16 +127,44 @@ describe('EvFile', () => {
   });
 
   it('should read a script, decompile, compile, write, and read it back correctly', () => {
-    const system0Script = evFile.functions[0].script;
-    const worldscript = new Worldscript(1);
-    const decompiled = worldscript.decompile(system0Script);
+    const funcId = 7;
+    const opcodes = evFile.functions[funcId].opcodes;
+    const script = evFile.decodeOpcodes(opcodes);
+    const worldscript = new Worldscript(evFile.functions[funcId].offset);
+    const decompiled = worldscript.decompile(script);
     const compiled = worldscript.compile(decompiled);
-    const encoded = evFile.encodeOpcodes(compiled);
-    evFile.setFunctionOpcodes(0, encoded);
+    const newOpcodes = evFile.encodeOpcodes(compiled);
+    evFile.setFunctionOpcodes(funcId, newOpcodes);
     const writtenData = evFile.writeFile();
     const newEvFile = new EvFile(writtenData);
-    const newSystem0Script = newEvFile.functions[0].script;
-    expect(newSystem0Script).toBe(system0Script);
-    expect(evFile.functions[0].opcodes).toEqual(encoded);
+    const newScript = newEvFile.functions[funcId].script;
+    expect(newScript).toBe(script);
+    expect(newOpcodes).toEqual(opcodes);
   });
+
+  it('should read all scripts, decompile, compile, write, and read them back correctly', () => {
+    let idx = 0;
+    for (const fn of evFile.functions) {
+      idx++;
+      if (!fn.opcodes || !fn.script) continue;
+      const worldscript = new Worldscript(fn.offset);
+      const decompiled = worldscript.decompile(fn.script);
+      const compiled = worldscript.compile(decompiled);
+      const encoded = evFile.encodeOpcodes(compiled);
+      evFile.setFunctionOpcodes(idx - 1, encoded);
+    }
+    const writtenData = evFile.writeFile();
+    const newEvFile = new EvFile(writtenData);
+    idx = 0;
+    for (const fn of newEvFile.functions) {
+      idx++;
+      if (!fn.opcodes) continue;
+      const worldscript = new Worldscript(fn.offset);
+      // const script = evFile.decodeOpcodes(fn.opcodes, fn.offset);
+      const decompiled = worldscript.decompile(fn.script);
+      const compiled = worldscript.compile(decompiled);
+      const encoded = evFile.encodeOpcodes(compiled);
+      expect(evFile.functions[idx - 1].opcodes).toEqual(encoded);
+    }
+  });  
 });

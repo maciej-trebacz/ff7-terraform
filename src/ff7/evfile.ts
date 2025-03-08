@@ -116,17 +116,20 @@ export class EvFile {
         });
     }
 
-    decodeOpcodes(opcodes: number[]): string {
+    decodeOpcodes(opcodes: number[], startingOffset?: number): string {
         const out = [];
+        let currentOffset = startingOffset ?? 0;
 
         for (let i = 0; i < opcodes.length; i++) {
             const opcode = opcodes[i];
+            const offsetPrefix = startingOffset !== undefined ? `${currentOffset.toString(16).toUpperCase().padStart(4, '0')}: ` : '';
+            currentOffset++;
             
             // Special case for opcodes in range 0x204-0x22f (CALL_FN_X)
             if (opcode >= 0x204 && opcode <= 0x22F) {
                 const fnNumber = opcode - 0x204;
                 const mnemonic = `CALL_FN_${fnNumber}`;
-                out.push(mnemonic);
+                out.push(`${offsetPrefix}${mnemonic}`);
                 continue;
             }
             
@@ -134,16 +137,17 @@ export class EvFile {
 
             const def = Opcodes[opcode];
             if (def.codeParams === 0) {
-                out.push(def.mnemonic);
+                out.push(`${offsetPrefix}${def.mnemonic}`);
             } else {
                 const params = [];
                 for (let j = 0; j < def.codeParams; j++) {
                     i++;
+                    currentOffset++;
 
                     // Two or four hex digits
                     params.push(opcodes[i].toString(16).toUpperCase().padStart(opcodes[i] < 0x100 ? 2 : 4, '0'));
                 }
-                out.push(`${def.mnemonic} ${params.join(' ')}`);
+                out.push(`${offsetPrefix}${def.mnemonic} ${params.join(' ')}`);
             }
         }
         
@@ -341,8 +345,8 @@ export class EvFile {
                         codeOffset += 2;
                     });
                 } else {
-                    // For functions without opcodes, write a return instruction (0xCB)
-                    view.setUint16(codeOffset, 0xCB, true);
+                    // For functions without opcodes, write a return instruction (0x203)
+                    view.setUint16(codeOffset, 0x203, true);
                     codeOffset += 2;
                 }
             }
