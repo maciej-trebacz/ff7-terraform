@@ -1,5 +1,6 @@
 import { Parser } from 'binary-parser';
 import { Opcodes, Mnemonic } from './worldscript/opcodes';
+import { Worldscript } from './worldscript/worldscript';
 
 const opcodes = new Parser()
     .array('', {
@@ -286,16 +287,17 @@ export class EvFile {
         }
     }
 
-    setFunctionOpcodes(index: number, opcodes: number[]) {
-        this.functions[index].opcodes = opcodes;
+    setFunctionScript(index: number, script: string) {
+        this.functions[index].script = script;
     }
 
     writeFile() {
         const out = new Uint8Array(0x7000);
         const view = new DataView(out.buffer);
+        let worldscript: Worldscript;
 
         // Write initial return instruction at offset 0x400
-        view.setUint16(0x400, 0xCB, true);
+        view.setUint16(0x400, 0x203, true);
         let codeOffset = 0x402; // Start after initial return
 
         // Sort functions by their header value
@@ -311,7 +313,7 @@ export class EvFile {
         
         // First entry is 0 (matching original FF7 data)
         view.setUint16(tableOffset, 0, true);
-        view.setUint16(tableOffset + 2, 1, true); // Points to first instruction after initial return
+        view.setUint16(tableOffset + 2, 0, true); // Points to first instruction after initial return
         tableOffset += 4;
 
         // Write actual function entries
@@ -332,15 +334,22 @@ export class EvFile {
                 }
             } else {
                 // Store this function's offset for potential aliases
+                const newFnOffset = (codeOffset - 0x400) / 2;
                 if (fn.id !== undefined) {
-                    functionOffsets.set(fn.id, (codeOffset - 0x400) / 2);
+                    functionOffsets.set(fn.id, newFnOffset);
                 }
-                
-                view.setUint16(tableOffset + 2, (codeOffset - 0x400) / 2, true);
+
+                view.setUint16(tableOffset + 2, newFnOffset, true);
                 
                 // Write function opcodes if they exist
-                if (fn.opcodes && fn.opcodes.length > 0) {
-                    fn.opcodes.forEach(opcode => {
+                if (fn.script) {
+                    // Recompile the script to ensure correct jump offsets
+                    worldscript = new Worldscript(fn.offset);
+                    const decompiled = worldscript.decompile(fn.script);
+                    worldscript = new Worldscript(newFnOffset);
+                    const compiled = worldscript.compile(decompiled);
+                    const opcodes = this.encodeOpcodes(compiled);
+                    opcodes.forEach(opcode => {
                         view.setUint16(codeOffset, opcode, true);
                         codeOffset += 2;
                     });
