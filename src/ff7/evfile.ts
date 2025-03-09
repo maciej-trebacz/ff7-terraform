@@ -1,5 +1,5 @@
 import { Parser } from 'binary-parser';
-import { Opcodes, Mnemonic } from './opcodes';
+import { Opcodes, Mnemonic } from './worldscript/opcodes';
 
 const opcodes = new Parser()
     .array('', {

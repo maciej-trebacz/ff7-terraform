@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { EvFile, FF7Function, FunctionType, SystemFunction, ModelFunction, MeshFunction } from '../src/ff7/evfile';
-import { Worldscript } from '../src/ff7/worldscript';
+import { Worldscript } from '../src/ff7/worldscript/worldscript';
 import fs from 'fs';
 import path from 'path';
 

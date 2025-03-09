@@ -1,270 +1,7 @@
 import { OpcodeDefinition, Opcodes, Mnemonic, Namespace } from "./opcodes";
-
-// AST Node Interfaces
-interface BaseExpression {
-  type: string;
-}
-
-interface LiteralExpression extends BaseExpression {
-  type: 'Literal';
-  value: string | number | boolean;
-}
-
-interface IdentifierExpression extends BaseExpression {
-  type: 'Identifier';
-  name: string;
-}
-
-interface MemberExpression extends BaseExpression {
-  type: 'Member';
-  object: Expression;
-  property: IdentifierExpression;
-}
-
-interface FunctionCallExpression extends BaseExpression {
-  type: 'FunctionCall';
-  callee: Expression;
-  arguments: Expression[];
-}
-
-interface BinaryExpression extends BaseExpression {
-  type: 'Binary';
-  operator: string;
-  left: Expression;
-  right: Expression;
-}
-
-interface UnaryExpression extends BaseExpression {
-  type: 'Unary';
-  operator: string;
-  operand: Expression;
-}
-
-interface IndexExpression extends BaseExpression {
-  type: 'Index';
-  base: Expression;
-  index: Expression;
-}
-
-type Expression = 
-  | LiteralExpression
-  | IdentifierExpression
-  | MemberExpression
-  | FunctionCallExpression
-  | BinaryExpression
-  | UnaryExpression
-  | IndexExpression;
-
-interface BaseStatement {
-  type: string;
-}
-
-interface ExpressionStatement extends BaseStatement {
-  type: 'ExpressionStatement';
-  expression: Expression;
-}
-
-interface IfStatement extends BaseStatement {
-  type: 'If';
-  condition: Expression;
-  thenBranch: Statement[];
-}
-
-interface GotoStatement extends BaseStatement {
-  type: 'Goto';
-  label: string;
-}
-
-interface LabelStatement extends BaseStatement {
-  type: 'Label';
-  label: string;
-}
-
-interface AssignmentStatement extends BaseStatement {
-  type: 'Assignment';
-  left: Expression;
-  right: Expression;
-}
-
-interface ReturnStatement extends BaseStatement {
-  type: 'Return';
-}
-
-interface BlockStatement extends BaseStatement {
-  type: 'Block';
-  body: Statement[];
-}
-
-// Define Statement as a discriminated union
-type Statement = 
-  | ExpressionStatement
-  | IfStatement
-  | GotoStatement
-  | LabelStatement
-  | AssignmentStatement
-  | ReturnStatement
-  | BlockStatement;
-
-// Compiler types
-interface Token {
-  type: string;
-  value: string;
-}
-
-// Instruction type for code generation
-type Instruction = 
-  | { type: 'instruction'; mnemonic: string; codeParams: string[] }
-  | { type: 'label'; label: string };
-
-// Enum Mappings
-const specialByteMap: Record<string, string> = {
-  0: 'entity_mesh_x_coord',
-  1: 'entity_mesh_y_coord',
-  2: 'entity_coord_in_mesh_x',
-  3: 'entity_coord_in_mesh_y',
-  4: 'entity_direction',
-  5: 'unknown_5',
-  6: 'last_field_id',
-  7: 'map_options',
-  8: 'player_entity_model_id',
-  9: 'current_entity_model_id',
-  10: 'check_if_riding_chocobo',
-  11: 'battle_result',
-  12: 'prompt_window_result',
-  13: 'unknown_13',
-  14: 'unknown_14',
-  15: 'unknown_15',
-  16: 'random_8bit_number'
-};
-
-const savemapMapping: Record<string, string> = {
-  0xBA4: 'game_progress',
-  0xBF9: 'chocobo_rating_1',
-  0xBFA: 'chocobo_rating_2',
-  0xBFB: 'chocobo_rating_3',
-  0xBFC: 'chocobo_rating_4',
-  // 0xC21: 'own_chocobo_stable',
-  // 0xC22: 'chocobos_on_map_on_map',
-  // 0xC23: 'vehicle_display',
-  // 0xC1F: 'weapons_killed',
-  // 0xD73: 'yuffie_flags',
-  // 0xEF4: 'submarine_color_flags',
-  // 0xF2A: 'submarine_flags'
-};
-
-const modelsMapping: Record<string, string> = {
-  0: 'cloud',
-  1: 'tifa',
-  2: 'cid',
-  3: 'highwind',
-  4: 'wild_chocobo',
-  5: 'tiny_bronco',
-  6: 'buggy',
-  7: 'junon_cannon',
-  8: 'cargo_ship',
-  9: 'highwind_propellers',
-  10: 'diamond_weapon',
-  11: 'ultima_weapon',
-  12: 'fort_condor',
-  13: 'submarine',
-  14: 'gold_saucer',
-  15: 'rocket_town_rocket',
-  16: 'rocket_town',
-  17: 'sunken_gelnika',
-  18: 'underwater_reactor',
-  19: 'chocobo',
-  20: 'midgar_cannon',
-  21: 'unknown_21',
-  22: 'unknown_22',
-  23: 'unknown_23',
-  24: 'north_crater_barrier',
-  25: 'ancient_forest',
-  26: 'key_of_the_ancients',
-  27: 'unknown_27',
-  28: 'red_submarine',
-  29: 'ruby_weapon',
-  30: 'emerald_weapon',
-  65535: 'system'
-};
-
-// Opcode IDs for model-related opcodes
-const modelMnemonics = [Mnemonic.DIST_MODEL, Mnemonic.LOAD_MODEL, Mnemonic.SET_ENTITY, Mnemonic.FACE_MODEL, Mnemonic.MOVE_TO_MODEL];
-const modelOpcodes = modelMnemonics.map(mnemonic => Object.entries(Opcodes).find(([_, opcode]) => opcode.mnemonic === mnemonic)?.[1]);
-
-const fieldsMapping: Record<string, string> = {
-  0: 'other_worldmap',
-  1: 'midgar_sector_5_gate',
-  2: 'kalm',
-  3: 'chocobo_farm',
-  4: 'mythril_mines_from_swamp',
-  5: 'mythril_mines_from_condor',
-  6: 'fort_condor',
-  7: 'junon',
-  8: 'temple_of_the_ancients',
-  9: 'old_mans_house',
-  10: 'weapon_seller',
-  11: 'mideel',
-  12: 'quadra_magic_cave',
-  13: 'costa_del_sol',
-  14: 'mt_corel',
-  15: 'north_corel',
-  16: 'corel_desert',
-  17: 'gongaga',
-  18: 'cosmo_canyon',
-  19: 'nibelheim_south',
-  20: 'rocket_town_south',
-  21: 'lucrecias_cave',
-  22: 'hp_mp_cave',
-  23: 'plains_outside_wutai',
-  24: 'mime_cave',
-  25: 'bone_village',
-  26: 'corral_valley_cave',
-  27: 'icicle_village_south',
-  28: 'chocobo_sage_house',
-  29: 'knights_of_the_round_cave',
-  30: 'underwater_reactor',
-  31: 'sunken_gelnika',
-  32: 'impaled_zolom',
-  33: 'yuffie_encounter',
-  34: 'plains_outside_wutai_2',
-  35: 'plains_outside_wutai_3',
-  36: 'cargo_ship',
-  37: 'costa_del_sol_harbor',
-  38: 'costa_del_sol_harbor_2',
-  39: 'junon_dock',
-  40: 'tiny_bronco_crash',
-  41: 'highwind_bridge',
-  42: 'submarine_bridge',
-  43: 'nibelheim_north',
-  44: 'mt_nibel_from_rocket_town',
-  45: 'highwind_bridge_2',
-  46: 'mt_nibel_from_nibelheim',
-  47: 'icicle_village_north',
-  48: 'great_glacier',
-  49: 'rocket_town_north',
-  50: 'highwind_bridge_3',
-  51: 'highwind_bridge_4',
-  52: 'highwind_bridge_5',
-  53: 'diamond_weapon_encounter',
-  54: 'submarine_bridge_2',
-  55: 'ancient_forest',
-  56: 'submarine_bridge_3',
-  57: 'corral_valley',
-  58: 'forgotten_capital',
-  59: 'highwind_deck',
-  60: 'gaeas_cliff_base',
-  61: 'great_glacier_2',
-  62: 'great_glacier_3',
-  63: 'great_glacier_4',
-  64: 'great_glacier_5'
-};
-
-const enumMaps: Record<string, { namespace: string, mapping: Record<number, string> }> = {
-  'Special.player_entity_model_id': {
-    namespace: 'Entities',
-    mapping: modelsMapping
-  },
-};
+import { AssignmentStatement, BinaryExpression, BlockStatement, Expression, ExpressionStatement, FunctionCallExpression, GotoStatement, IdentifierExpression, IfStatement, IndexExpression, Instruction, LabelStatement, LiteralExpression, MemberExpression, Statement, Token, UnaryExpression } from "./types";
+import { Parser } from "./parser";
+import { modelsMapping, fieldsMapping, savemapMapping, modelOpcodes, enumMaps } from "./constants";
 
 export class Worldscript {
   private startingOffset: number;
@@ -295,6 +32,30 @@ export class Worldscript {
     'Temp': 0x0
   };  
 
+  // Mapping from value to name and type for decompilation
+  private specialMap: { [key: number]: { name: string; type: 'byte' | 'word' } } = {
+    0: { name: 'entity_mesh_x_coord', type: 'byte' },
+    1: { name: 'entity_mesh_y_coord', type: 'byte' },
+    2: { name: 'entity_coord_in_mesh_x', type: 'word' },
+    3: { name: 'entity_coord_in_mesh_y', type: 'word' },
+    4: { name: 'entity_direction', type: 'byte' },
+    5: { name: 'unknown_5', type: 'byte' },
+    6: { name: 'last_field_id', type: 'byte' },
+    7: { name: 'map_options', type: 'byte' },
+    8: { name: 'player_entity_model_id', type: 'byte' },
+    9: { name: 'current_entity_model_id', type: 'byte' },
+    10: { name: 'check_if_riding_chocobo', type: 'byte' },
+    11: { name: 'battle_result', type: 'byte' },
+    12: { name: 'prompt_window_result', type: 'byte' },
+    13: { name: 'unknown_0d', type: 'byte' },
+    14: { name: 'unknown_0e', type: 'byte' },
+    15: { name: 'unknown_0f', type: 'byte' },
+    16: { name: 'random_8bit_number', type: 'byte' },
+  };
+
+  // Mapping from name to value and type for compilation
+  private specialVariables: Record<string, { value: number; type: 'byte' | 'word' }> = {};  
+
   constructor(startingOffset: number, debugMode: boolean = false) {
     this.startingOffset = startingOffset;
     this.mnemonicToOpcode = {};
@@ -309,6 +70,15 @@ export class Worldscript {
     for (const [_, value] of Object.entries(Opcodes)) {
       this.mnemonicToOpcode[value.mnemonic] = value;
     }
+    // Initialize specialVariables from specialMap
+    this.specialVariables = {};
+    for (const key in this.specialMap) {
+      if (this.specialMap.hasOwnProperty(key)) {
+        const numKey = Number(key);
+        const info = this.specialMap[numKey];
+        this.specialVariables[info.name] = { value: numKey, type: info.type };
+      }
+    }    
   }
 
   public decompile(opcodeString: string, includeMetadata: boolean = false): string {
@@ -620,48 +390,105 @@ export class Worldscript {
     let propertyName: string;
     let namespace: string;
     let base: number;
+
+    const numberToString = (param: number): string => {
+      if (param < 10) return `${param}`
+      else return `0x${param.toString(16).toUpperCase()}`
+    };
   
     switch (opcode.mnemonic) {
       case Mnemonic.PUSH_CONSTANT:
         return { type: 'Literal', value };
   
       case Mnemonic.PUSH_SAVEMAP_WORD:
+        namespace = 'Savemap';
+        base = this.namespaceBases[namespace]; // 0xBA4
+        address = base + value;
+        const addrStrWord = `0x${address.toString(16).toUpperCase()}`;
+        if (savemapMapping[addrStrWord] && savemapMapping[addrStrWord].type === 'word') {
+          return {
+            type: 'Member',
+            object: { type: 'Identifier', name: namespace },
+            property: { type: 'Identifier', name: savemapMapping[addrStrWord].name }
+          };
+        } else {
+          const savemapIndexExpr: IndexExpression = {
+            type: 'Index',
+            base: { type: 'Identifier', name: namespace },
+            index: { type: 'Literal', value: addrStrWord }
+          };
+          return {
+            type: 'Member',
+            object: savemapIndexExpr,
+            property: { type: 'Identifier', name: 'word' }
+          };
+        }
+  
       case Mnemonic.PUSH_SAVEMAP_BYTE:
         namespace = 'Savemap';
         base = this.namespaceBases[namespace]; // 0xBA4
         address = base + value;
-        const savemapIndexExpr: IndexExpression = {
-          type: 'Index',
-          base: { type: 'Identifier', name: namespace },
-          index: { type: 'Literal', value: `0x${address.toString(16).toUpperCase()}` }
-        };
-        propertyName = opcode.mnemonic === Mnemonic.PUSH_SAVEMAP_WORD ? 'word' : 'byte';
-        return {
-          type: 'Member',
-          object: savemapIndexExpr,
-          property: { type: 'Identifier', name: propertyName }
-        };
+        const addrByteStr = `0x${address.toString(16).toUpperCase()}`;
+        if (savemapMapping[addrByteStr] && savemapMapping[addrByteStr].type === 'byte') {
+          return {
+            type: 'Member',
+            object: { type: 'Identifier', name: namespace },
+            property: { type: 'Identifier', name: savemapMapping[addrByteStr].name }
+          };
+        } else {
+          const savemapIndexExpr: IndexExpression = {
+            type: 'Index',
+            base: { type: 'Identifier', name: namespace },
+            index: { type: 'Literal', value: addrByteStr }
+          };
+          return {
+            type: 'Member',
+            object: savemapIndexExpr,
+            property: { type: 'Identifier', name: 'byte' }
+          };
+        }
   
       case Mnemonic.PUSH_SAVEMAP_BIT:
         namespace = 'Savemap';
         base = this.namespaceBases[namespace]; // 0xBA4
-        address = base + Math.floor(value / 8);
+        const byteOffset = Math.floor(value / 8);
+        address = base + byteOffset;
         bit = value % 8;
-        const savemapBitIndexExpr: IndexExpression = {
-          type: 'Index',
-          base: { type: 'Identifier', name: namespace },
-          index: { type: 'Literal', value: `0x${address.toString(16).toUpperCase()}` }
-        };
-        const savemapBitMember: MemberExpression = {
-          type: 'Member',
-          object: savemapBitIndexExpr,
-          property: { type: 'Identifier', name: 'bit' }
-        };
-        return {
-          type: 'Index',
-          base: savemapBitMember,
-          index: { type: 'Literal', value: bit }
-        };
+        const addrStr = `0x${address.toString(16).toUpperCase()}`;
+        if (savemapMapping[addrStr] && savemapMapping[addrStr].type === 'byte') {
+          const byteName = savemapMapping[addrStr].name;
+          const savemapMember: MemberExpression = {
+            type: 'Member',
+            object: { type: 'Identifier', name: namespace },
+            property: { type: 'Identifier', name: byteName }
+          };
+          const bitMember: MemberExpression = {
+            type: 'Member',
+            object: savemapMember,
+            property: { type: 'Identifier', name: 'bit' }
+          };
+          return {
+            type: 'Index',
+            base: bitMember,
+            index: { type: 'Literal', value: bit }
+          };
+        } else {
+          const savemapIndexExpr: IndexExpression = {
+            type: 'Index',
+            base: { type: 'Identifier', name: namespace },
+            index: { type: 'Literal', value: addrStr }
+          };
+          const bitMember: MemberExpression = {
+            type: 'Member',
+            object: savemapIndexExpr,
+            property: { type: 'Identifier', name: 'bit' }
+          };
+          return {
+            type: 'Index',
+            base: bitMember,
+            index: { type: 'Literal', value: bit }
+          };
+        }
   
       case Mnemonic.PUSH_TEMP_WORD:
       case Mnemonic.PUSH_TEMP_BYTE:
@@ -671,7 +498,7 @@ export class Worldscript {
         const tempIndexExpr: IndexExpression = {
           type: 'Index',
           base: { type: 'Identifier', name: namespace },
-          index: { type: 'Literal', value: `0x${address.toString(16).toUpperCase()}` }
+          index: { type: 'Literal', value: numberToString(address) }
         };
         propertyName = opcode.mnemonic === Mnemonic.PUSH_TEMP_WORD ? 'word' : 'byte';
         return {
@@ -682,8 +509,12 @@ export class Worldscript {
   
       case Mnemonic.PUSH_SPECIAL_BYTE:
       case Mnemonic.PUSH_SPECIAL_WORD:
-      case Mnemonic.PUSH_SPECIAL_BIT:
-        propertyName = specialByteMap[value] || `unknown_${param}`;
+        const specialInfo = this.specialMap[value];
+        if (specialInfo) {
+          propertyName = specialInfo.name;
+        } else {
+          propertyName = `unknown_${value.toString(16).padStart(2, '0')}`;
+        }
         return {
           type: 'Member',
           object: { type: 'Identifier', name: 'Special' },
@@ -825,7 +656,7 @@ export class Worldscript {
       // This is a special case to handle multiple statements (when there's a label and a statement from handleOpcode)
       const blockNode = node as BlockStatement;
       const body = blockNode.body.map(stmt => this.generateNode(stmt, indent, node)).join('\n');
-      return `${indentation}${body}`;
+      return body;
     }
     return '';
   }
@@ -1012,14 +843,14 @@ export class Worldscript {
 
   private generateExpression(expr: Expression): Instruction[] {
     switch (expr.type) {
-      case 'Literal': 
+      case 'Literal':
         return [{ type: 'instruction', mnemonic: 'PUSH_CONSTANT', codeParams: [Number(expr.value).toString(16).padStart(Number(expr.value) < 256 ? 2 : 4, '0')] }];
-      case 'Identifier': 
+      case 'Identifier':
         throw new Error('Bare identifiers are not supported in expressions.');
-      case 'Member': 
-        if (expr.object.type === 'Index' && expr.object.base.type === 'Identifier' && 
-            ['Savemap', 'Special', 'Temp'].includes(expr.object.base.name) && 
-            expr.object.index.type === 'Literal' && 
+      case 'Member':
+        if (expr.object.type === 'Index' && expr.object.base.type === 'Identifier' &&
+            ['Savemap', 'Special', 'Temp'].includes(expr.object.base.name) &&
+            expr.object.index.type === 'Literal' &&
             expr.property.type === 'Identifier' && ['byte', 'word'].includes(expr.property.name)) {
           const namespace = expr.object.base.name;
           let address = expr.object.index.value;
@@ -1032,19 +863,42 @@ export class Worldscript {
           const mnemonic = expr.property.name === 'byte' ? `PUSH_${namespace.toUpperCase()}_BYTE` : `PUSH_${namespace.toUpperCase()}_WORD`;
           return [{ type: 'instruction', mnemonic, codeParams: [offset.toString(16).padStart(Number(offset) < 0x100 ? 2 : 4, '0')] }];
         } else if (expr.object.type === 'Identifier' && expr.object.name === 'Savemap') {
-          const addressEntry = Object.entries(savemapMapping).find(([_, name]) => name === expr.property.name);
-          if (addressEntry) {
-            const address = parseInt(addressEntry[0]);
-            const offset = address - 0xBA4;
-            return [{ type: 'instruction', mnemonic: 'PUSH_SAVEMAP_WORD', codeParams: [offset.toString(16).padStart(Number(offset) < 0x100 ? 2 : 4, '0')] }];
+          const propertyName = (expr.property as IdentifierExpression).name;
+          const mappingEntry = Object.entries(savemapMapping).find(([_, entry]) => entry.name === propertyName);
+          if (mappingEntry) {
+            const address = parseInt(mappingEntry[0].slice(2), 16);
+            const base = this.namespaceBases['Savemap'];
+            const offset = address - base;
+            const type = mappingEntry[1].type;
+            let mnemonic;
+            if (type === 'word') {
+              mnemonic = 'PUSH_SAVEMAP_WORD';
+            } else if (type === 'byte') {
+              mnemonic = 'PUSH_SAVEMAP_BYTE';
+            } else {
+              throw new Error(`Unsupported type for Savemap variable ${propertyName}: ${type}`);
+            }
+            return [{ type: 'instruction', mnemonic, codeParams: [offset.toString(16).padStart(Number(offset) < 0x100 ? 2 : 4, '0')] }];
           }
+          // If not found in savemapMapping, fall through to error
         } else if (expr.object.type === 'Identifier' && expr.object.name === 'Special') {
-          if (expr.property.name.startsWith('unknown_')) {
-            const value = expr.property.name.slice(8);
-            return [{ type: 'instruction', mnemonic: 'PUSH_SPECIAL_BYTE', codeParams: [value] }];
+          const propertyName = (expr.property as IdentifierExpression).name;
+          if (propertyName.startsWith('unknown_')) {
+            const valueStr = propertyName.slice(8);
+            const value = parseInt(valueStr, 16);
+            if (isNaN(value)) throw new Error(`Invalid unknown Special variable: ${propertyName}`);
+            const valueHex = value.toString(16).padStart(value < 0x100 ? 2 : 4, '0');
+            return [{ type: 'instruction', mnemonic: 'PUSH_SPECIAL_BYTE', codeParams: [valueHex] }];
+          } else {
+            const variable = this.specialVariables[propertyName];
+            if (variable) {
+              const mnemonic = variable.type === 'byte' ? 'PUSH_SPECIAL_BYTE' : 'PUSH_SPECIAL_WORD';
+              const valueHex = variable.value.toString(16).padStart(variable.value < 0x100 ? 2 : 4, '0');
+              return [{ type: 'instruction', mnemonic, codeParams: [valueHex] }];
+            } else {
+              throw new Error(`Unknown Special variable: ${propertyName}`);
+            }
           }
-          const valueEntry = Object.entries(specialByteMap).find(([_, name]) => name === expr.property.name);
-          if (valueEntry) return [{ type: 'instruction', mnemonic: 'PUSH_SPECIAL_BYTE', codeParams: [parseInt(valueEntry[0]).toString(16).padStart(2, '0')] }];
         } else if (expr.object.type === 'Identifier' && expr.object.name === 'Entities') {
           const id = this.modelsMappingInverse[expr.property.name];
           if (id !== undefined) return [{ type: 'instruction', mnemonic: 'PUSH_CONSTANT', codeParams: [id.toString(16).padStart(2, '0')] }];
@@ -1054,10 +908,27 @@ export class Worldscript {
         }
         throw new Error(`Unknown member expression: ${(expr.object as IdentifierExpression).name}.${expr.property.name}`);
       case 'Index':
-        if (expr.base.type === 'Member' && expr.base.object.type === 'Index' && 
-            expr.base.object.base.type === 'Identifier' && ['Savemap', 'Special', 'Temp'].includes(expr.base.object.base.name) && 
-            expr.base.object.index.type === 'Literal' && 
-            expr.base.property.type === 'Identifier' && expr.base.property.name === 'bit' && 
+        if (expr.base.type === 'Member' && expr.base.object.type === 'Member' &&
+            expr.base.object.object.type === 'Identifier' && expr.base.object.object.name === 'Savemap' &&
+            expr.base.property.type === 'Identifier' && expr.base.property.name === 'bit' &&
+            expr.index.type === 'Literal' && typeof expr.index.value === 'number') {
+          const propertyName = (expr.base.object.property as IdentifierExpression).name;
+          const mappingEntry = Object.entries(savemapMapping).find(([_, entry]) => entry.name === propertyName && entry.type === 'byte');
+          if (mappingEntry) {
+            const address = parseInt(mappingEntry[0].slice(2), 16);
+            const base = this.namespaceBases['Savemap'];
+            const byteOffset = address - base;
+            const bit = expr.index.value;
+            if (bit < 0 || bit > 7) throw new Error('Bit index out of range');
+            const value = (byteOffset * 8) + bit;
+            return [{ type: 'instruction', mnemonic: 'PUSH_SAVEMAP_BIT', codeParams: [value.toString(16).padStart(4, '0')] }];
+          } else {
+            throw new Error(`Unknown Savemap byte property: ${propertyName}`);
+          }
+        } else if (expr.base.type === 'Member' && expr.base.object.type === 'Index' &&
+            expr.base.object.base.type === 'Identifier' && ['Savemap', 'Special', 'Temp'].includes(expr.base.object.base.name) &&
+            expr.base.object.index.type === 'Literal' &&
+            expr.base.property.type === 'Identifier' && expr.base.property.name === 'bit' &&
             expr.index.type === 'Literal' && typeof expr.index.value === 'number') {
           const namespace = expr.base.object.base.name;
           let address = expr.base.object.index.value;
@@ -1073,13 +944,13 @@ export class Worldscript {
           return [{ type: 'instruction', mnemonic: `PUSH_${namespace.toUpperCase()}_BIT`, codeParams: [value.toString(16).padStart(4, '0')] }];
         }
         throw new Error('Unsupported index expression in this context');
-      case 'FunctionCall': 
+      case 'FunctionCall':
         return this.generateFunctionCallExpression(expr);
-      case 'Binary': 
+      case 'Binary':
         return this.generateBinaryExpression(expr);
-      case 'Unary': 
+      case 'Unary':
         return this.generateUnaryExpression(expr);
-      default: 
+      default:
         throw new Error(`Unsupported expression type: ${(expr as any).type}`);
     }
   }
@@ -1185,206 +1056,4 @@ export class Worldscript {
     if (inst.type === 'label') return 0;
     return inst.mnemonic.startsWith('CALL_FN_') ? 1 : 1 + inst.codeParams.length;
   }  
-}
-
-/**
- * Parser class to convert tokens into an AST.
- */
-class Parser {
-  private tokens: Token[];
-  private index: number = 0;
-
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
-  }
-
-  private peek(): Token | null {
-    return this.index < this.tokens.length ? this.tokens[this.index] : null;
-  }
-
-  private consume(expectedType?: string): Token {
-    const token = this.peek();
-    if (!token) throw new Error('Unexpected end of input');
-    if (expectedType && token.type !== expectedType) {
-      throw new Error(`Expected ${expectedType}, got ${token.type}: ${token.value} at ${this.index}`);
-    }
-    this.index++;
-    return token;
-  }
-
-  public parse(): Statement[] {
-    const statements: Statement[] = [];
-    while (this.peek()) {
-      statements.push(this.parseStatement());
-    }
-    return statements;
-  }
-
-  private parseStatement(): Statement {
-    const token = this.peek();
-    if (!token) throw new Error('Unexpected end of input');
-    switch (token.type) {
-      case 'keyword':
-        if (token.value === 'if') return this.parseIfStatement();
-        if (token.value === 'goto') return this.parseGotoStatement();
-        if (token.value === 'return') {
-          this.consume('keyword');
-          return { type: 'Return' };
-        }
-        break;
-      case 'label_delim':
-        return this.parseLabelStatement();
-      default:
-        const expr = this.parseExpression();
-        if (this.peek()?.type === 'punct' && this.peek()?.value === '=') {
-          this.consume('punct');
-          const right = this.parseExpression();
-          return { type: 'Assignment', left: expr, right };
-        }
-        return { type: 'ExpressionStatement', expression: expr };
-    }
-    throw new Error(`Unexpected token: ${token.type} ${token.value}`);
-  }
-
-  private parseIfStatement(): IfStatement {
-    this.consume('keyword'); // 'if'
-    const condition = this.parseExpression();
-    const nextToken = this.peek();
-    if (!nextToken || nextToken.type !== 'keyword' || nextToken.value !== 'then') {
-      throw new Error(`Expected 'then' after condition, got ${nextToken?.type || 'none'}: ${nextToken?.value || 'none'} at index ${this.index}`);
-    }
-    this.consume('keyword'); // 'then'
-    const thenBranch: Statement[] = [];
-    while (this.peek() && (this.peek()!.type !== 'keyword' || this.peek()!.value !== 'end')) {
-      thenBranch.push(this.parseStatement());
-    }
-    this.consume('keyword'); // 'end'
-    return { type: 'If', condition, thenBranch };
-  }
-
-  private parseGotoStatement(): GotoStatement {
-    this.consume('keyword'); // 'goto'
-    const label = this.consume('identifier').value;
-    return { type: 'Goto', label };
-  }
-
-  private parseLabelStatement(): LabelStatement {
-    this.consume('label_delim'); // '::'
-    const label = this.consume('identifier').value;
-    this.consume('label_delim'); // '::'
-    return { type: 'Label', label };
-  }
-
-  private parseExpression(): Expression {
-    return this.parseUnaryExpression();
-  }
-
-  private parseUnaryExpression(): Expression {
-    const token = this.peek();
-    
-    // Check if we have a unary operator
-    if (token && token.type === 'operator' && ['!', '-'].includes(token.value)) {
-      const operator = this.consume('operator').value;
-      const operand = this.parseUnaryExpression(); // Recursive to handle chained unary ops like !!a
-      return { type: 'Unary', operator, operand };
-    }
-    
-    // If no unary operator, parse as a binary expression
-    return this.parseBinaryExpression(0);
-  }
-
-  private parseBinaryExpression(minPrecedence: number): Expression {
-    let left = this.parseMemberOrCall();
-    while (true) {
-      const operatorToken = this.peek();
-      if (!operatorToken || operatorToken.type !== 'operator') break;
-      const operator = operatorToken.value;
-      const precedence = this.getPrecedence(operator);
-      if (precedence < minPrecedence) break;
-      this.consume('operator');
-      const right = this.parseBinaryExpression(precedence + 1);
-      left = { type: 'Binary', operator, left, right };
-    }
-    return left;
-  }
-
-  private getPrecedence(operator: string): number {
-    switch (operator) {
-      case 'or':
-        return 1;
-      case 'and':
-        return 2;
-      case '<':
-      case '>':
-      case '<=':
-      case '>=':
-      case '==':
-      case '!=':
-        return 3;
-      case '<<':
-      case '>>':
-        return 4;
-      case '+':
-      case '-':
-        return 5;
-      case '*':
-      case '/':
-        return 6;
-      default:
-        return 0;
-    }
-  }
-
-  private parseMemberOrCall(): Expression {
-    let expr = this.parsePrimary();
-    while (this.peek() && (this.peek()!.value === '.' || this.peek()!.value === '[' || this.peek()!.value === '(')) {
-      if (this.peek()!.value === '.') {
-        this.consume('punct');
-        const property = this.consume('identifier');
-        expr = { type: 'Member', object: expr, property: { type: 'Identifier', name: property.value } };
-      } else if (this.peek()!.value === '[') {
-        this.consume('punct'); // '['
-        const index = this.parseExpression();
-        this.consume('punct'); // ']'
-        expr = { type: 'Index', base: expr, index };
-      } else if (this.peek()!.value === '(') {
-        this.consume('punct');
-        const args: Expression[] = [];
-        if (this.peek() && this.peek()!.value !== ')') {
-          args.push(this.parseExpression());
-          while (this.peek() && this.peek()!.value === ',') {
-            this.consume('punct');
-            args.push(this.parseExpression());
-          }
-        }
-        this.consume('punct'); // ')'
-        expr = { type: 'FunctionCall', callee: expr, arguments: args };
-      }
-    }
-    return expr;
-  }
-
-  private parsePrimary(): Expression {
-    const token = this.peek();
-    if (!token) throw new Error('Unexpected end of input');
-    if (token.type === 'number') {
-      this.consume('number');
-      // Support both hex (0x) and decimal numbers
-      return { 
-        type: 'Literal', 
-        value: token.value.startsWith('0x') ? 
-          parseInt(token.value, 16) : 
-          parseInt(token.value, 10) 
-      };
-    } else if (token.type === 'identifier') {
-      this.consume('identifier');
-      return { type: 'Identifier', name: token.value };
-    } else if (token.type === 'punct' && token.value === '(') {
-      this.consume('punct');
-      const expr = this.parseExpression();
-      this.consume('punct'); // ')'
-      return expr;
-    }
-    throw new Error(`Unexpected token in primary expression: ${token.type} ${token.value}`);
-  }
 }

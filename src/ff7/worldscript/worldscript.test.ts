@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Worldscript } from './worldscript';
-import { EvFile } from './evfile';
+import { EvFile } from '../evfile';
 import fs from 'fs';
 import path from 'path';
 
@@ -92,9 +92,9 @@ end
 ::label_1856::
 if Savemap.game_progress == 1596 then
   if Entity.distance_to_point(9) <= 256 then
-    Memory.write(Savemap.game_progress, 1598)
+    Savemap.game_progress = 1598
     System.enter_field(Fields.highwind_bridge_5, 0)
-    Memory.write(Savemap.bit(0xF29, 6), 1)
+    Savemap[0xF29].bit[6] = 1
   end
 end
 return`;
@@ -103,7 +103,7 @@ return`;
     expect(result.trim()).toBe(expected);
   });
 
-  it('should decompile system function 2 correctly (contains back-reference goto)', () => {
+  it('should decompile system function 2 correctly', () => {
     const filePath = path.resolve('data/wm0.ev');
     const fileData = fs.readFileSync(filePath);
     const evFile = new EvFile(new Uint8Array(fileData.buffer));
@@ -112,9 +112,9 @@ return`;
     const result = worldscript.decompile(script);
 
     const expected = `
-if Savemap.byte(0xF25) then
-  Memory.write(Savemap.byte(0xF25), Savemap.byte(0xF25) - 1)
-  if Savemap.byte(0xF25) == 0 then
+if Savemap[0xF25].byte then
+  Savemap[0xF25].byte = Savemap[0xF25].byte - 1
+  if Savemap[0xF25].byte == 0 then
     System.reset_zolom()
   end
 end
@@ -136,7 +136,7 @@ return
 System.set_control_lock(0)
 System.set_encounters(0)
 Entity.face_point(3)
-if !Savemap.bit(0xF28, 2) then
+if !Savemap[0xF28].bit[2] then
   Window.wait_until_ready()
   Window.set_dimensions(100, 160, 120, 41)
   Window.set_params(0, 1)
@@ -155,7 +155,7 @@ if !Savemap.bit(0xF28, 2) then
   Entity.set_movespeed(20)
   Entity.set_direction_facing(Special.entity_direction + 128)
   ::label_e9a::
-  if Special.value_0D then
+  if Special.unknown_0d then
     System.wait(1)
     goto label_e9a
   end
@@ -170,13 +170,13 @@ if !Savemap.bit(0xF28, 2) then
   Window.wait_until_ready()
   Window.set_message(22)
   Window.wait_for_acknowledge()
-  Memory.write(Savemap.bit(0xF28, 2), 1)
+  Savemap[0xF28].bit[2] = 1
   goto label_f20
 end
 Entity.set_movespeed(40)
 Entity.set_direction_facing(Special.entity_direction + 128)
 ::label_ee7::
-if Special.value_0D then
+if Special.unknown_0d then
   System.wait(1)
   goto label_ee7
 end
@@ -312,8 +312,8 @@ ADD
 SET_DIR`;
 
     const expected = `
-Entity.adjust_position_outside_vehicle(Temp.byte(0x3) + 80, 300)
-Entity.set_direction_facing(Temp.byte(0x3) + 192)
+Entity.adjust_position_outside_vehicle(Temp[3].byte + 80, 300)
+Entity.set_direction_facing(Temp[3].byte + 192)
 `;
 
     const result = worldscript.decompile(script);
@@ -374,6 +374,121 @@ RETURN`;
     const redecompiled = worldscript.decompile(recompiled);
     expect(redecompiled.trim()).toBe('System.wait(30)\nreturn');
   });
+
+  it('should handle various memory operations', () => {
+    worldscript = new Worldscript(0x1000);
+    const script = `
+RESET
+PUSH_SAVEMAP_WORD 00
+PUSH_CONSTANT 01
+WRITE
+RESET
+PUSH_SAVEMAP_BYTE 55
+PUSH_SAVEMAP_BYTE 56
+WRITE
+RESET
+PUSH_SAVEMAP_BYTE 54
+PUSH_SPECIAL_BYTE 07
+WRITE
+RESET
+PUSH_SAVEMAP_BIT 03F1
+PUSH_CONSTANT 01
+WRITE
+RESET
+PUSH_SAVEMAP_BIT 03F2
+PUSH_TEMP_BYTE 03
+WRITE
+RESET
+PUSH_SAVEMAP_WORD 0388
+PUSH_CONSTANT 02
+WRITE
+RESET
+PUSH_SAVEMAP_WORD 0388
+PUSH_SAVEMAP_WORD 038A
+WRITE
+RESET
+PUSH_TEMP_BYTE 01
+PUSH_CONSTANT 03
+WRITE
+RESET
+PUSH_TEMP_WORD 04
+PUSH_TEMP_WORD 06
+WRITE
+RESET
+PUSH_SAVEMAP_BYTE 7E
+PUSH_CONSTANT 02
+EQ
+GOTO_IF_FALSE 103F
+STOP
+RESET
+PUSH_SAVEMAP_BYTE 7F
+GOTO_IF_FALSE 1045
+SET_PLAYER
+RESET
+PUSH_SAVEMAP_WORD 0388
+PUSH_SAVEMAP_WORD 038A
+EQ
+GOTO_IF_FALSE 104E
+STOP
+RESET
+PUSH_SAVEMAP_BIT 08E1
+GOTO_IF_FALSE 1054
+SET_PLAYER
+RETURN    
+`;
+
+const expected = `
+Savemap.game_progress = 1
+Savemap.chocobo_rating_1 = Savemap.chocobo_rating_2
+Savemap[0xBF8].byte = Special.map_options
+Savemap.chocobos_on_map.bit[1] = 1
+Savemap.chocobos_on_map.bit[2] = Temp[3].byte
+Savemap[0xF2C].word = 2
+Savemap[0xF2C].word = Savemap[0xF2E].word
+Temp[1].byte = 3
+Temp[4].word = Temp[6].word
+if Savemap.chocobos_on_map == 2 then
+  Entity.stop()
+end
+if Savemap.vehicle_display then
+  Entity.set_player_model()
+end
+if Savemap[0xF2C].word == Savemap[0xF2E].word then
+  Entity.stop()
+end
+if Savemap[0xCC0].bit[1] then
+  Entity.set_player_model()
+end
+return
+`
+
+    const result = worldscript.decompile(script);
+    expect(result.trim()).toBe(expected.trim());
+
+    const compiled = worldscript.compile(result);
+    expect(compiled.trim()).toBe(script.trim());
+  });  
+
+  it('test', () => {
+    worldscript = new Worldscript(0x1000);
+    const script = `
+if Savemap[0xC22].byte == 2 then
+  Entity.stop()
+end
+return
+`
+    const expected = `
+    RESET
+PUSH_SAVEMAP_BYTE 7E
+PUSH_CONSTANT 02
+EQ
+GOTO_IF_FALSE 1009
+STOP
+RETURN
+`
+    const compiled = worldscript.compile(script);
+    expect(expected.trim()).toBe(compiled.trim());
+  });
 });
 
 describe('Worldscript compiler', () => {
@@ -413,7 +528,7 @@ end
 ::label_1856::
 if Savemap.game_progress == 1596 then
   if Entity.distance_to_point(9) <= 256 then
-    Memory.write(Savemap.game_progress, 1598)
+    Savemap.game_progress = 1598
     System.enter_field(Fields.highwind_bridge_5, 0)
   end
 end
