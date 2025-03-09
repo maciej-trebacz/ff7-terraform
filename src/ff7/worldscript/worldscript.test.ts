@@ -154,10 +154,10 @@ if !Savemap[0xF28].bit[2] then
   Entity.play_animation(0, 1)
   Entity.set_movespeed(20)
   Entity.set_direction_facing(Special.entity_direction + 128)
-  ::label_e9a::
+  ::label_e7c::
   if Special.unknown_0d then
     System.wait(1)
-    goto label_e9a
+    goto label_e7c
   end
   Window.wait_until_ready()
   Entity.set_movespeed(0)
@@ -171,14 +171,14 @@ if !Savemap[0xF28].bit[2] then
   Window.set_message(22)
   Window.wait_for_acknowledge()
   Savemap[0xF28].bit[2] = 1
-  goto label_f20
+  goto label_f02
 end
 Entity.set_movespeed(40)
 Entity.set_direction_facing(Special.entity_direction + 128)
-::label_ee7::
+::label_ec9::
 if Special.unknown_0d then
   System.wait(1)
-  goto label_ee7
+  goto label_ec9
 end
 Entity.set_movespeed(0)
 System.wait(10)
@@ -190,7 +190,7 @@ Window.set_params(0, 0)
 Window.wait_until_ready()
 Window.set_message(23)
 Window.wait_for_acknowledge()
-::label_f20::
+::label_f02::
 Entity.play_animation(0, 1)
 System.set_control_lock(1)
 System.set_encounters(1)
@@ -503,8 +503,8 @@ describe('Worldscript compiler', () => {
     const fileData = fs.readFileSync(filePath);
     const evFile = new EvFile(new Uint8Array(fileData.buffer));
     const script = evFile.functions[0].script;
-    worldscript = new Worldscript(1);
-    const decompiled = worldscript.decompile(script);
+    worldscript = new Worldscript(evFile.functions[0].offset);
+    const decompiled = worldscript.decompile(script, true);
     const compiled = worldscript.compile(decompiled);
     expect(compiled.trim()).toBe(script.trim());
   });

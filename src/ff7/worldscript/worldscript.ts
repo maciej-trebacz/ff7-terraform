@@ -33,7 +33,7 @@ export class Worldscript {
   };  
 
   // Mapping from value to name and type for decompilation
-  private specialMap: { [key: number]: { name: string; type: 'byte' | 'word' } } = {
+  private specialMap: { [key: number]: { name: string; type: 'byte' | 'word' | 'bit' } } = {
     0: { name: 'entity_mesh_x_coord', type: 'byte' },
     1: { name: 'entity_mesh_y_coord', type: 'byte' },
     2: { name: 'entity_coord_in_mesh_x', type: 'word' },
@@ -45,7 +45,7 @@ export class Worldscript {
     8: { name: 'player_entity_model_id', type: 'byte' },
     9: { name: 'current_entity_model_id', type: 'byte' },
     10: { name: 'check_if_riding_chocobo', type: 'byte' },
-    11: { name: 'battle_result', type: 'byte' },
+    11: { name: 'battle_result', type: 'bit' },
     12: { name: 'prompt_window_result', type: 'byte' },
     13: { name: 'unknown_0d', type: 'byte' },
     14: { name: 'unknown_0e', type: 'byte' },
@@ -54,7 +54,7 @@ export class Worldscript {
   };
 
   // Mapping from name to value and type for compilation
-  private specialVariables: Record<string, { value: number; type: 'byte' | 'word' }> = {};  
+  private specialVariables: Record<string, { value: number; type: 'byte' | 'word' | 'bit' }> = {};  
 
   constructor(startingOffset: number, debugMode: boolean = false) {
     this.startingOffset = startingOffset;
@@ -509,6 +509,7 @@ export class Worldscript {
   
       case Mnemonic.PUSH_SPECIAL_BYTE:
       case Mnemonic.PUSH_SPECIAL_WORD:
+      case Mnemonic.PUSH_SPECIAL_BIT:
         const specialInfo = this.specialMap[value];
         if (specialInfo) {
           propertyName = specialInfo.name;
@@ -741,12 +742,12 @@ export class Worldscript {
 
   private tokenize(code: string): Token[] {
     const tokens: Token[] = [];
-    const regex = /\s*(::|<=|>=|==|!=|<<|>>|<|>|or|and|!|-|\+|\*|\/|\[|\]|\w+|\d+|[\.\(\),=:])\s*/g;
+    const regex = /\s*(::|<=|>=|==|!=|<<|>>|<|>|or|and|!|-|\+|\*|\/|\||\&|\[|\]|\w+|\d+|[\.\(\),=:])\s*/g;
     let match;
     while ((match = regex.exec(code)) !== null) {
       const value = match[1];
       if (value === '::') tokens.push({ type: 'label_delim', value });
-      else if (['<=', '>=', '==', '!=', '<', '>', 'or', 'and', '!', '-', '+', '<<', '>>', '*', '/'].includes(value)) tokens.push({ type: 'operator', value });
+      else if (['<=', '>=', '==', '!=', '<', '>', 'or', 'and', '!', '-', '+', '<<', '>>', '*', '/', '|', '&'].includes(value)) tokens.push({ type: 'operator', value });
       else if (value.match(/^\d+$/)) tokens.push({ type: 'number', value });
       else if (value.match(/^0x[0-9a-fA-F]+$/)) tokens.push({ type: 'number', value });
       else if (value.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
@@ -892,7 +893,7 @@ export class Worldscript {
           } else {
             const variable = this.specialVariables[propertyName];
             if (variable) {
-              const mnemonic = variable.type === 'byte' ? 'PUSH_SPECIAL_BYTE' : 'PUSH_SPECIAL_WORD';
+              const mnemonic = variable.type === 'byte' ? 'PUSH_SPECIAL_BYTE' : variable.type === 'word' ? 'PUSH_SPECIAL_WORD' : 'PUSH_SPECIAL_BIT';
               const valueHex = variable.value.toString(16).padStart(variable.value < 0x100 ? 2 : 4, '0');
               return [{ type: 'instruction', mnemonic, codeParams: [valueHex] }];
             } else {

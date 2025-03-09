@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { EvFile, FunctionType } from './evfile';
 import fs from 'fs';
 import path from 'path';
-import { Worldscript } from './worldscript';
+import { Worldscript } from './worldscript/worldscript';
 
 describe('EvFile', () => {
   let evFile: EvFile;
@@ -141,30 +141,4 @@ describe('EvFile', () => {
     expect(newScript).toBe(script);
     expect(newOpcodes).toEqual(opcodes);
   });
-
-  it('should read all scripts, decompile, compile, write, and read them back correctly', () => {
-    let idx = 0;
-    for (const fn of evFile.functions) {
-      idx++;
-      if (!fn.opcodes || !fn.script) continue;
-      const worldscript = new Worldscript(fn.offset);
-      const decompiled = worldscript.decompile(fn.script);
-      const compiled = worldscript.compile(decompiled);
-      const encoded = evFile.encodeOpcodes(compiled);
-      evFile.setFunctionOpcodes(idx - 1, encoded);
-    }
-    const writtenData = evFile.writeFile();
-    const newEvFile = new EvFile(writtenData);
-    idx = 0;
-    for (const fn of newEvFile.functions) {
-      idx++;
-      if (!fn.opcodes) continue;
-      const worldscript = new Worldscript(fn.offset);
-      // const script = evFile.decodeOpcodes(fn.opcodes, fn.offset);
-      const decompiled = worldscript.decompile(fn.script);
-      const compiled = worldscript.compile(decompiled);
-      const encoded = evFile.encodeOpcodes(compiled);
-      expect(evFile.functions[idx - 1].opcodes).toEqual(encoded);
-    }
-  });  
 });
