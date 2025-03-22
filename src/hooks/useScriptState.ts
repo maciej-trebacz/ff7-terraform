@@ -19,6 +19,8 @@ interface ScriptsState {
   scriptType: FunctionType
   selectedScript: SelectedScript | null
   ev: EvFile | null
+  decompiled: boolean
+  decompiledScripts: Record<string, string> // Map of script keys to decompiled content
 }
 
 const scriptsStateAtom = atom<ScriptsState>({
@@ -26,7 +28,9 @@ const scriptsStateAtom = atom<ScriptsState>({
   selectedMap: 'WM0',
   scriptType: FunctionType.System,
   selectedScript: null,
-  ev: null
+  ev: null,
+  decompiled: false,
+  decompiledScripts: {}
 })
 
 export function useScriptsState() {
@@ -41,7 +45,8 @@ export function useScriptsState() {
         ...prev,
         functions: [],
         selectedScript: null,
-        ev: null
+        ev: null,
+        decompiledScripts: {} // Clear decompiled scripts when loading new scripts
       }))
 
       const targetMap = mapId || state.selectedMap
@@ -90,7 +95,7 @@ export function useScriptsState() {
 
   const isScriptSelected = (script: FF7Function): boolean => {
     if (!state.selectedScript) return false
-    
+
     switch (script.type) {
       case FunctionType.System:
         return state.selectedScript.type === script.type && state.selectedScript.id === script.id
@@ -115,6 +120,8 @@ export function useScriptsState() {
   const updateSelectedScript = (updates: Partial<FF7Function>) => {
     const currentScript = getSelectedScript()
     if (!currentScript) return
+
+    console.debug("[Scripts] Updating script", currentScript.id, updates)
 
     // Update the script in the functions array
     setState(prev => {
@@ -155,18 +162,54 @@ export function useScriptsState() {
     }
   }
 
+  const setDecompiledMode = (enabled: boolean) => {
+    setState(prev => ({ ...prev, decompiled: enabled }))
+  }
+
+  const getScriptKey = (script: FF7Function): string => {
+    switch (script.type) {
+      case FunctionType.System:
+        return `sys-${script.id}`
+      case FunctionType.Model:
+        return `mdl-${script.modelId}-${script.id}`
+      case FunctionType.Mesh:
+        return `mesh-${script.x}-${script.y}-${script.id}`
+    }
+  }
+
+  const getDecompiledScript = (script: FF7Function): string => {
+    const key = getScriptKey(script)
+    return state.decompiledScripts[key] || ''
+  }
+
+  const updateDecompiledScript = (script: FF7Function, content: string) => {
+    const key = getScriptKey(script)
+    setState(prev => ({
+      ...prev,
+      decompiledScripts: {
+        ...prev.decompiledScripts,
+        [key]: content
+      }
+    }))
+  }
+
   return {
     functions: state.functions,
     selectedMap: state.selectedMap,
     scriptType: state.scriptType,
     selectedScript: state.selectedScript,
     ev: state.ev,
+    decompiled: state.decompiled,
     loadScripts,
     setSelectedMap,
     setScriptType,
     selectScript,
     isScriptSelected,
     getSelectedScript,
-    updateSelectedScript
+    updateSelectedScript,
+    setDecompiledMode,
+    getDecompiledScript,
+    updateDecompiledScript,
+    getScriptKey
   }
 } 

@@ -6,9 +6,9 @@ import { Mnemonic } from '@/ff7/worldscript/opcodes'
 const mnemonicValues = Object.values(Mnemonic)
 
 // Define the FF7 script language for syntax highlighting
-export function createFF7ScriptLanguage() {
+export function createFF7OpcodesLanguage() {
   return StreamLanguage.define({
-    name: 'ff7script',
+    name: 'ff7opcodes',
     
     startState: () => ({
       inComment: false
@@ -58,7 +58,7 @@ export function createFF7ScriptLanguage() {
 }
 
 // Autocomplete function for FF7 script mnemonics
-export function ff7ScriptCompletion(context: CompletionContext): CompletionResult | null {
+export function ff7OpcodesCompletion(context: CompletionContext): CompletionResult | null {
   const word = context.matchBefore(/\w*/)
   if (!word || word.from === word.to && !context.explicit) return null
   
@@ -72,9 +72,9 @@ export function ff7ScriptCompletion(context: CompletionContext): CompletionResul
 }
 
 // Create the language support with autocomplete
-export function ff7ScriptLanguage() {
+export function ff7OpcodesLanguage() {
   return new LanguageSupport(
-    createFF7ScriptLanguage(),
-    [autocompletion({ override: [ff7ScriptCompletion] })]
+    createFF7OpcodesLanguage(),
+    [autocompletion({ override: [ff7OpcodesCompletion] })]
   )
 } 

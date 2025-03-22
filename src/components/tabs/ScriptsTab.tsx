@@ -29,7 +29,7 @@ export function ScriptsTab() {
     <div className="flex flex-col w-full min-h-0">
       <ScriptControls />
       <div className="flex-1 flex min-h-0">
-        <ScriptList className="w-[300px] border-r overflow-y-auto" />
+        <ScriptList className="w-[240px] border-r overflow-y-auto" />
         <ScriptEditor className="flex-1 overflow-y-auto" />
         <ScriptSidebar className="w-[300px] border-l overflow-y-auto" />
       </div>

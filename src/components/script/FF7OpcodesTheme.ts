@@ -13,7 +13,7 @@ const selectionColor = '#3a3d41'
 const highlightColor = '#4d4d4d'
 
 // Create the base theme
-export const ff7ScriptBaseTheme = EditorView.theme({
+export const ff7OpcodesBaseTheme = EditorView.theme({
   '&': {
     backgroundColor: darkGray,
     color: lightGray,
@@ -90,7 +90,7 @@ export const ff7ScriptBaseTheme = EditorView.theme({
 })
 
 // Create the highlight style
-export const ff7ScriptHighlightStyle = HighlightStyle.define([
+export const ff7OpcodesHighlightStyle = HighlightStyle.define([
   // Keywords (mnemonics) in white
   { tag: tags.keyword, color: white },
   
@@ -105,7 +105,7 @@ export const ff7ScriptHighlightStyle = HighlightStyle.define([
 ])
 
 // Export the combined theme
-export const ff7ScriptTheme = [
-  ff7ScriptBaseTheme,
-  syntaxHighlighting(ff7ScriptHighlightStyle)
+export const ff7OpcodesTheme = [
+  ff7OpcodesBaseTheme,
+  syntaxHighlighting(ff7OpcodesHighlightStyle)
 ] 

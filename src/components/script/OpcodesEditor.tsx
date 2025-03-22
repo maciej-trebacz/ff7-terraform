@@ -7,10 +7,10 @@ import { indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatchi
 import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
-import { ff7ScriptLanguage } from './FF7ScriptLanguage'
-import { ff7ScriptTheme } from './FF7ScriptTheme'
+import { ff7OpcodesLanguage } from './FF7OpcodesLanguage'
+import { ff7OpcodesTheme } from './FF7OpcodesTheme'
 
-interface ScriptCodeEditorProps {
+interface OpcodesEditorProps {
   value: string
   onChange: (value: string) => void
   className?: string
@@ -44,7 +44,7 @@ const basicSetup = [
   ])
 ]
 
-export function ScriptCodeEditor({ value, onChange, className }: ScriptCodeEditorProps) {
+export function OpcodesEditor({ value, onChange, className }: OpcodesEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
 
@@ -61,8 +61,8 @@ export function ScriptCodeEditor({ value, onChange, className }: ScriptCodeEdito
       doc: value,
       extensions: [
         basicSetup,
-        ff7ScriptLanguage(),
-        ff7ScriptTheme,
+        ff7OpcodesLanguage(),
+        ff7OpcodesTheme,
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             onChange(update.state.doc.toString())

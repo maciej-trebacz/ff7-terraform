@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils"
 import { useScriptsState } from "@/hooks/useScriptState"
 import { Button } from "@/components/ui/button"
 import { FF7Function } from "@/ff7/evfile"
+import { modelsMapping } from "@/ff7/worldscript/constants"
 
 interface ScriptListProps {
   className?: string
@@ -10,11 +11,11 @@ interface ScriptListProps {
 function getScriptLabel(script: FF7Function): string {
   switch (script.type) {
     case 0: // System
-      return `System ${script.id}`
+      return `system_${script.id}`
     case 1: // Model
-      return `Model ${script.modelId} (${script.id})`
+      return `${modelsMapping[script.modelId] ?? `model_${script.modelId}`}_${script.id}`
     case 2: // Mesh
-      return `Mesh ${script.x},${script.y} (${script.id})`
+      return `row_${script.x}_col_${script.y}_fn_${script.id}`
   }
 }
 
@@ -53,8 +54,8 @@ export function ScriptList({ className }: ScriptListProps) {
             >
               {getScriptLabel(script)}
               {script.aliasId !== undefined && (
-                <span className="text-xs text-muted-foreground">
-                  (&rArr; System {script.aliasId})
+                <span className="text-[10px] font-thin text-muted-foreground">
+                  (&rArr; system {script.aliasId})
                 </span>
               )}
             </Button>
