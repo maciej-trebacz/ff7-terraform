@@ -90,6 +90,7 @@ export function MapTab() {
       vertices[1],
       vertices[2]
     );
+
     setSelectedTriangle(updatedTriangle);
   };
 
@@ -118,6 +119,7 @@ export function MapTab() {
             onModeChange={handleModeChange}
             enabledAlternatives={enabledAlternatives}
             onAlternativesChange={setEnabledAlternatives}
+            showNormals={false}
           />
         </div>
         <div className="w-[300px] border-l bg-background pl-3 pr-2 pt-2">

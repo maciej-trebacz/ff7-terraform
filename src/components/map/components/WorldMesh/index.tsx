@@ -50,7 +50,6 @@ export function WorldMesh({
   const selectedTriangleGeometry = useSelectedTriangleGeometry(triangleMap, selectedFaceIndex);
 
   const selectedTriangle = triangleMap?.[selectedFaceIndex];
-  console.log(cameraHeight);
 
   // Update triangleMap in global state whenever it changes
   useEffect(() => {
@@ -270,7 +269,7 @@ export function WorldMesh({
               />
             </mesh>
           )}
-          {normalLinesGeometry && (
+          {showNormals && normalLinesGeometry && (
             <lineSegments geometry={normalLinesGeometry} renderOrder={11}>
               <lineBasicMaterial 
                 color="#00ff00" 

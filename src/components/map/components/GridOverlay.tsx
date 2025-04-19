@@ -113,7 +113,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       <lineSegments geometry={gridGeometry} renderOrder={12}>
         <lineBasicMaterial 
           color="#ffffff" 
-          opacity={0.8} 
+          opacity={0.6} 
           transparent
           depthWrite={false}
           depthTest={false}
@@ -121,10 +121,10 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </lineSegments>
 
       {/* Section grid lines */}
-      <lineSegments geometry={sectionGridGeometry} renderOrder={12}>
+      <lineSegments geometry={sectionGridGeometry} renderOrder={13}>
         <lineBasicMaterial 
           color="#ffff00" 
-          opacity={0.5} 
+          opacity={1} 
           transparent
           depthWrite={false}
           depthTest={false}

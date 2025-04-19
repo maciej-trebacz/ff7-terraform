@@ -1,7 +1,7 @@
 import { Triangle } from "@/ff7/mapfile";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { REGION_NAMES, TRIANGLE_TYPES } from "@/lib/map-data";
+import { TRIANGLE_TYPES } from "@/lib/map-data";
 import {
   Tooltip,
   TooltipContent,
@@ -9,6 +9,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { UVEditor } from "@/components/map/components/UVEditor";
+import { useMessagesState } from "@/hooks/useMessagesState";
+import { useMapState } from "@/hooks/useMapState";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SelectedTriangleProps {
   triangle: Triangle | null;
@@ -17,6 +27,9 @@ interface SelectedTriangleProps {
 }
 
 export function SelectedTriangle({ triangle, textures, onVertexChange }: SelectedTriangleProps) {
+  const { messages } = useMessagesState();
+  const { updateSingleTriangle } = useMapState();
+
   if (!triangle) {
     return (
       <div className="text-xs text-muted-foreground rounded-md border bg-muted/50 p-2">
@@ -25,43 +38,74 @@ export function SelectedTriangle({ triangle, textures, onVertexChange }: Selecte
     );
   }
 
+  const handlePropertyChange = (updates: any) => {
+    updateSingleTriangle(updates);
+  };
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="space-y-1.5">
           <Label>Properties</Label>
           <div className="rounded-md border bg-muted/50 p-2 space-y-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help flex justify-between text-xs">
-                    <span className="text-muted-foreground">Type</span>
-                    <span className="font-medium">
-                      {TRIANGLE_TYPES[triangle.type]?.type ?? `Unknown (${triangle.type})`}
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{TRIANGLE_TYPES[triangle.type]?.description ?? 'Unknown type'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Script ID</span>
-              <span className="font-medium">{triangle.script}</span>
+            <div className="flex items-center justify-between space-x-2">
+              <Label className="text-xs w-16 shrink-0">Type</Label>
+              <Select
+                value={triangle.type.toString()}
+                onValueChange={(value) => handlePropertyChange({ type: parseInt(value) })}
+              >
+                <SelectTrigger className="h-6 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TRIANGLE_TYPES).map(([id, data]) => (
+                    <SelectItem key={id} value={id}>
+                      {data.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Region</span>
-              <span className="font-medium">
-                {REGION_NAMES[triangle.locationId] ?? `Unknown (${triangle.locationId})`}
-              </span>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label className="text-xs w-16 shrink-0">Script ID</Label>
+              <Input
+                type="number"
+                className="h-6 text-xs"
+                min={0}
+                max={255}
+                value={triangle.script}
+                onChange={(e) => handlePropertyChange({ script: parseInt(e.target.value) })}
+              />
             </div>
-            {triangle.isChocobo ? (
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Chocobo</span>
-                <span className="font-medium">Yes</span>
-              </div>
-            ) : null}
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label className="text-xs w-16 shrink-0">Region</Label>
+              <Select
+                value={triangle.locationId.toString()}
+                onValueChange={(value) => handlePropertyChange({ locationId: parseInt(value) })}
+              >
+                <SelectTrigger className="h-6 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {messages.slice(0, 20).map((message, index) => (
+                    <SelectItem key={index} value={index.toString()}>
+                      {message}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="chocobo"
+                checked={triangle.isChocobo}
+                onCheckedChange={(checked) => handlePropertyChange({ isChocobo: checked === true })}
+              />
+              <Label htmlFor="chocobo" className="text-xs">Is Chocobo Area</Label>
+            </div>
           </div>
         </div>
 
@@ -112,9 +156,23 @@ export function SelectedTriangle({ triangle, textures, onVertexChange }: Selecte
         <div className="space-y-1.5">
           <Label>Texture</Label>
           <div className="rounded-md border bg-muted/50 p-2 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">ID</span>
-              <span className="font-medium">{textures[triangle.texture]?.name ?? 'Unknown'} ({triangle.texture})</span>
+            <div className="space-y-1">
+              <Label className="text-xs">Texture</Label>
+              <Select
+                value={triangle.texture.toString()}
+                onValueChange={(value) => handlePropertyChange({ texture: parseInt(value) })}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {textures.map((texture, index) => (
+                    <SelectItem key={index} value={index.toString()}>
+                      {texture.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Size</span>
@@ -128,14 +186,14 @@ export function SelectedTriangle({ triangle, textures, onVertexChange }: Selecte
               <UVEditor 
                 triangle={triangle}
                 onSave={(uvCoords) => {
-                  (window as any).updateTriangleUVs(
-                    uvCoords[0].u,
-                    uvCoords[0].v,
-                    uvCoords[1].u,
-                    uvCoords[1].v,
-                    uvCoords[2].u,
-                    uvCoords[2].v
-                  );
+                  handlePropertyChange({
+                    uVertex0: uvCoords[0].u,
+                    vVertex0: uvCoords[0].v,
+                    uVertex1: uvCoords[1].u,
+                    vVertex1: uvCoords[1].v,
+                    uVertex2: uvCoords[2].u,
+                    vVertex2: uvCoords[2].v
+                  });
                 }}
               />
             </div>

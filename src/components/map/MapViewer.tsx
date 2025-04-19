@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Stats, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import { Triangle } from '@/ff7/mapfile';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { PerspectiveCamera as ThreePerspectiveCamera, OrthographicCamera as ThreeOrthographicCamera } from 'three';
+import { PerspectiveCamera as ThreePerspectiveCamera, OrthographicCamera as ThreeOrthographicCamera, Vector3 } from 'three';
 import { RenderingMode } from './types';
 import { CAMERA_HEIGHT, MESH_SIZE, SCALE, SHOW_DEBUG } from './constants';
 import { CameraDebugInfo, CameraDebugOverlay } from './components/DebugOverlay';
@@ -54,7 +54,7 @@ function MapViewer({
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const perspectiveCameraRef = useRef<ThreePerspectiveCamera>(null);
   const orthographicCameraRef = useRef<ThreeOrthographicCamera>(null);
-  const { worldmap, mapType, mode } = useMapState();
+  const { worldmap, mapType, mode, setSelectedTriangle } = useMapState();
   const zoomRef = useRef(1);
 
   // Update local rendering mode when prop changes
@@ -79,6 +79,7 @@ function MapViewer({
   const handleTriangleSelect = (triangle: Triangle | null, faceIndex: number | null) => {
     if (onTriangleSelect) {
       setSelectedFaceIndex(faceIndex);
+      setSelectedTriangle(faceIndex);
       onTriangleSelect(triangle);
     }
   };
@@ -107,90 +108,22 @@ function MapViewer({
   }, [worldmap]);
 
   // Camera configuration
-  const cameraConfig = useMemo(() => {
-    const margin = 50;
+  const perspectiveConfig = useMemo(() => {
     const position = [
       mapDimensions.center.x,
       CAMERA_HEIGHT[mapType],
       mapDimensions.center.z
     ] as [number, number, number];
-
-    if (cameraType === 'orthographic') {
-      const containerAspect = window.innerWidth / window.innerHeight;
-      const mapAspect = mapDimensions.width / mapDimensions.height;
-      
-      let halfHeight = mapDimensions.height / 2 + margin;
-      let halfWidth = mapDimensions.width / 2 + margin;
-
-      // If container is wider than the map's aspect ratio, fit to height
-      if (containerAspect > mapAspect) {
-        halfWidth = halfHeight * containerAspect;
-      } else {
-        // If container is taller than the map's aspect ratio, fit to width
-        halfHeight = halfWidth / containerAspect;
-      }
-
-      return {
-        position,
-        left: -halfWidth,
-        right: halfWidth,
-        top: halfHeight,
-        bottom: -halfHeight,
-        near: -1000,
-        far: 100000,
-        up: [0, 0, -1] as [number, number, number],
-        zoom: 1
-      };
-    }
-
+  
     return {
       position,
-      fov: 60,
-      near: 0.1,
-      far: 1000000,
-      up: [0, 0, -1] as [number, number, number]
+      fov:    60,
+      near:   0.1,
+      far:    1000000,
+      up:     [0, 0, -1] as [number, number, number]
     };
   }, [mapDimensions, mapType, cameraType]);
 
-  // Add resize handler
-  useEffect(() => {
-    if (cameraType !== 'orthographic') return;
-
-    const handleResize = () => {
-      const camera = orthographicCameraRef.current;
-      if (!camera || !mapDimensions.width) return;
-
-      const containerAspect = window.innerWidth / window.innerHeight;
-      const mapAspect = mapDimensions.width / mapDimensions.height;
-      const margin = 50;
-      
-      let halfHeight = mapDimensions.height / 2 + margin;
-      let halfWidth = mapDimensions.width / 2 + margin;
-
-      // If container is wider than the map's aspect ratio, fit to height
-      if (containerAspect > mapAspect) {
-        halfWidth = halfHeight * containerAspect;
-      } else {
-        // If container is taller than the map's aspect ratio, fit to width
-        halfHeight = halfWidth / containerAspect;
-      }
-
-      const currentZoom = camera.zoom;
-      camera.left = -halfWidth;
-      camera.right = halfWidth;
-      camera.top = halfHeight;
-      camera.bottom = -halfHeight;
-      camera.zoom = currentZoom;
-      camera.updateProjectionMatrix();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [mapDimensions, cameraType]);
-
-  // New helper function to reset camera and controls
   const camera = cameraType === 'perspective' ? perspectiveCameraRef.current : orthographicCameraRef.current;
   const resetCameraAndControls = () => {
     if (!camera || !mapDimensions.width) return;
@@ -234,6 +167,33 @@ function MapViewer({
     }
   }, [mapType, cameraType, mapDimensions]);
 
+  const orthoBase = useMemo(() => ({
+    position: [
+      mapDimensions.center.x,
+      CAMERA_HEIGHT[mapType],
+      mapDimensions.center.z
+    ] as [number, number, number],
+    near: -1000,
+    far: 100000,
+    up: [0, 0, -1] as [number, number, number],
+    zoom: 1
+  }), [mapDimensions, mapType]);
+
+  function AutoOrtho({ mapDimensions, margin = 50 }: { mapDimensions: any; margin?: number }) {
+    const { camera, viewport } = useThree();
+    useEffect(() => {
+      if (!(camera instanceof ThreeOrthographicCamera)) return;
+      const halfH = mapDimensions.height / 2 + margin;
+      const halfW = halfH * viewport.aspect;
+      camera.top    =  halfH;
+      camera.bottom = -halfH;
+      camera.left   = -halfW;
+      camera.right  =  halfW;
+      camera.updateProjectionMatrix();
+    }, [viewport.aspect, mapDimensions, margin, camera]);
+    return null;
+  }
+
   const isLoading = externalIsLoading;
 
   return (
@@ -266,9 +226,12 @@ function MapViewer({
 
         <Canvas style={{ width: '100%', height: '100%' }}>
           {cameraType === 'perspective' ? (
-            <PerspectiveCamera makeDefault {...cameraConfig} ref={perspectiveCameraRef} />
+            <PerspectiveCamera makeDefault {...perspectiveConfig} ref={perspectiveCameraRef} />
           ) : (
-            <OrthographicCamera makeDefault {...cameraConfig} ref={orthographicCameraRef} />
+            <>
+              <OrthographicCamera makeDefault {...orthoBase} ref={orthographicCameraRef} />
+              <AutoOrtho mapDimensions={mapDimensions} margin={50} />
+            </>
           )}
           {SHOW_DEBUG && <Stats />}
           {SHOW_DEBUG && <CameraDebugInfo onDebugInfo={setDebugInfo} />}

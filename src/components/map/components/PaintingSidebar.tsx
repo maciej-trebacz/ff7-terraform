@@ -10,8 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { REGION_NAMES, TRIANGLE_TYPES } from "@/lib/map-data";
+import { TRIANGLE_TYPES } from "@/lib/map-data";
 import { useState } from "react";
+import { useMessagesState } from "@/hooks/useMessagesState";
 
 interface PaintingValues {
   type: string | null;
@@ -33,6 +34,7 @@ interface CopiedTriangleData {
 
 export function PaintingSidebar() {
   const { paintingSelectedTriangles, worldmap, updateSelectedTriangles, updateTriangle, textures, togglePaintingSelectedTriangle, triangleMap } = useMapState();
+  const { messages } = useMessagesState();
   const [values, setValues] = useState<PaintingValues>({
     type: null,
     region: null,
@@ -183,9 +185,9 @@ export function PaintingSidebar() {
               <SelectValue placeholder="Select region" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(REGION_NAMES).map(([id, name]) => (
-                <SelectItem key={id} value={id}>
-                  {name}
+              {messages.map((message, index) => (
+                <SelectItem key={index} value={index.toString()}>
+                  {message}
                 </SelectItem>
               ))}
             </SelectContent>

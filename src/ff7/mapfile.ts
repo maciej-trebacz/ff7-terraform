@@ -298,9 +298,48 @@ export class MapFile {
             }
         } 
 
-        for (let i = 0; i < 80; i++) {
-            pos = this.writeSection(this.map.sections[0], out, pos);
+        const alternatives = [50, 41, 42, 60, 47, 48];
+        const alternativeGroups = [
+            [50],
+            [41, 42],
+            [60],
+            [47, 48]
+        ];
+
+        console.log("Writing alternative groups")
+
+        let count = 0;
+        for (const group of alternativeGroups) {
+            const sectionIds = new Set<number>();
+            for (const id of group) {
+                for (let i = 1; i >= 0; i--) {
+                    for (let j = 1; j >= 0; j--) {
+                        sectionIds.add(id - i * 9 - j);
+                    }
+                }
+            }
+            const sortedSectionIds = Array.from(sectionIds).sort((a, b) => a - b);
+            for (const sectionId of sortedSectionIds) {
+                const x = sectionId % 9;
+                const y = Math.floor(sectionId / 9);
+                console.log("Writing section", sectionId)
+                for (let i = 0; i < 2; i++) {
+                    for (let j = 0; j < 2; j++) {
+                        let sectionId = (y + i) % 7 * 9 + (x + j) % 9
+                        if (alternatives.includes(sectionId)) {
+                            sectionId = alternatives.indexOf(sectionId) + 63;
+                        }
+
+                        const section = this.map.sections[sectionId]
+                        console.log("Writing section copy", sectionId)
+                        pos = this.writeSection(section, out, pos);
+                        count++;
+                    }
+                }
+            }
         }
+
+        console.log("Wrote", count, "sections")
 
         // Return the Uint8Array instead of writing to file
         return out;

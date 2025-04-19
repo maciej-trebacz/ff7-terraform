@@ -34,6 +34,7 @@ interface MapState {
   changedMeshes: [number, number][]
   paintingSelectedTriangles: Set<number>
   triangleMap: TriangleWithVertices[] | null
+  selectedTriangle: number | null
   updateColors?: () => void
   updateTriangleTexture?: (triangle: TriangleWithVertices) => void
 }
@@ -49,6 +50,7 @@ const mapStateAtom = atom<MapState>({
   changedMeshes: [],
   paintingSelectedTriangles: new Set<number>(),
   triangleMap: null,
+  selectedTriangle: null,
   updateColors: undefined,
   updateTriangleTexture: undefined
 })
@@ -318,6 +320,40 @@ export function useMapState() {
     });
   };
 
+  const updateSingleTriangle = (updates: TriangleUpdates) => {
+    setState(prev => {
+      if (!prev.worldmap || !prev.triangleMap || !prev.selectedTriangle) return prev;
+
+      const triangle = prev.triangleMap[prev.selectedTriangle];
+      if (!triangle) {
+        console.warn(`[Map] Triangle with index ${prev.selectedTriangle} not found`);
+        return prev;
+      }
+
+      console.debug("[Map] Updating single triangle", prev.selectedTriangle, updates)
+
+      // Update the triangle and get its mesh coordinates
+      const [row, col] = updateTriangle(triangle, updates);
+      
+      // Add the modified mesh to changedMeshes if it's not already there
+      const newChangedMeshes = [...prev.changedMeshes];
+      if (row >= 0 && col >= 0 && !prev.changedMeshes.some(([r, c]) => r === row && c === col)) {
+        newChangedMeshes.push([row, col]);
+      }
+
+      // Update the colors in the geometry
+      if (prev.updateColors) {
+        prev.updateColors();
+      }
+
+      return {
+        ...prev,
+        changedMeshes: newChangedMeshes,
+        triangleMap: [...prev.triangleMap] // Create new array to trigger re-render
+      };
+    });
+  };
+
   const setTriangleMap = useCallback((triangleMap: TriangleWithVertices[], updateColors?: () => void, updateTriangleTexture?: (triangle: TriangleWithVertices) => void) => {
     setState(prev => ({ ...prev, triangleMap, updateColors, updateTriangleTexture }));
   }, [setState]);
@@ -339,6 +375,10 @@ export function useMapState() {
     });
   };
 
+  const setSelectedTriangle = useCallback((triangleIndex: number | null) => {
+    setState(prev => ({ ...prev, selectedTriangle: triangleIndex }));
+  }, [setState]);
+
   return {
     mapId: state.mapId,
     mapType: state.mapType,
@@ -348,6 +388,7 @@ export function useMapState() {
     textures: state.textures,
     enabledAlternatives: state.enabledAlternatives,
     triangleMap: state.triangleMap,
+    selectedTriangle: state.selectedTriangle,
     loadMap,
     saveMap,
     loadTextures,
@@ -357,8 +398,10 @@ export function useMapState() {
     togglePaintingSelectedTriangle,
     paintingSelectedTriangles: state.paintingSelectedTriangles,
     updateSelectedTriangles,
+    updateSingleTriangle,
     updateTriangle,
     setTriangleMap,
-    updateSectionMesh
+    updateSectionMesh,
+    setSelectedTriangle
   }
 } 

@@ -9,6 +9,31 @@ import { useRef, useState } from 'react';
 import { WorldMapTexture } from '@/ff7/texfile';
 import { Checkbox } from '@/components/ui/checkbox';
 
+// Vector Math Helpers
+type Vector3 = { x: number, y: number, z: number };
+
+function subtract(v1: Vector3, v2: Vector3): Vector3 {
+  return { x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z };
+}
+
+function cross(v1: Vector3, v2: Vector3): Vector3 {
+  return {
+    x: v1.y * v2.z - v1.z * v2.y,
+    y: v1.z * v2.x - v1.x * v2.z,
+    z: v1.x * v2.y - v1.y * v2.x,
+  };
+}
+
+function normalize(v: Vector3): Vector3 {
+  const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  if (len === 0) return { x: 0, y: 0, z: 0 };
+  return { x: v.x / len, y: v.y / len, z: v.z / len };
+}
+
+function add(v1: Vector3, v2: Vector3): Vector3 {
+  return { x: v1.x + v2.x, y: v1.y + v2.y, z: v1.z + v2.z };
+}
+
 // Helper functions for texture UV conversion
 function findTextureForUV(u: number, v: number, texturePositions: Map<number, { x: number, y: number, name: string }>, textures: WorldMapTexture[]): { textureId: number, texture: WorldMapTexture } | null {
   const atlasU = u * ATLAS_SIZE;
@@ -69,6 +94,7 @@ export function ExportImport() {
     const normals: Array<{ x: number, y: number, z: number }> = []; // Final vertex-mapped normals
     const texCoords: Array<{ u: number, v: number }> = [];
     const triangles: any[] = [];
+    const triangleVertices: Array<{ v0Idx: number, v1Idx: number, v2Idx: number }> = []; // Store vertex indices for triangles
 
     // Store normal indices per vertex for later processing
     const vertexToNormalIdx: number[] = [];
@@ -130,7 +156,14 @@ export function ExportImport() {
           // Store normal index for this vertex
           if (indices.length > 2) {
             const normalIndex = parseInt(indices[2]) - 1;
-            vertexToNormalIdx[vertexIndex] = normalIndex;
+            // Ensure normalIndex is valid before assignment
+            if (normalIndex >= 0 && normalIndex < tempNormals.length) {
+                vertexToNormalIdx[vertexIndex] = normalIndex;
+            } else {
+                vertexToNormalIdx[vertexIndex] = -1; // Mark as invalid/missing normal
+            }
+          } else {
+            vertexToNormalIdx[vertexIndex] = -1; // Mark as missing normal
           }
 
           if (indices.length > 1 && indices[1] !== '') {
@@ -181,13 +214,50 @@ export function ExportImport() {
       }
     }
 
-    // Map normals to vertices using the stored indices
-    for (let i = 0; i < vertices.length; i++) {
-      if (resetNormals) {
-        normals.push({ x: 0, y: -4096, z: 0 });
-      } else {
+    // Map normals to vertices using the stored indices OR recalculate if resetNormals is true
+    if (resetNormals) {
+      // Recalculate normals based on triangle geometry
+      const calculatedNormals: Vector3[] = vertices.map(() => ({ x: 0, y: 0, z: 0 }));
+
+      triangles.forEach(triangle => {
+        const v0 = triangle.vertex0;
+        const v1 = triangle.vertex1;
+        const v2 = triangle.vertex2;
+
+        // Calculate edges
+        const edge1 = subtract(v1, v0);
+        const edge2 = subtract(v2, v0);
+
+        // Calculate face normal (cross product)
+        const faceNormal = cross(edge1, edge2);
+
+        // Find the indices of the vertices in the main vertices array
+        // This assumes triangle.vertexN holds the actual vertex objects
+        // We need a way to map back to the original vertex index if they are copies.
+        // Let's find indices based on object reference or coordinate match.
+        // Assuming triangle.vertexN are direct references or have unique coords for lookup:
+        const v0Idx = vertices.findIndex(v => v.x === v0.x && v.y === v0.y && v.z === v0.z);
+        const v1Idx = vertices.findIndex(v => v.x === v1.x && v.y === v1.y && v.z === v1.z);
+        const v2Idx = vertices.findIndex(v => v.x === v2.x && v.y === v2.y && v.z === v2.z);
+
+        // Add face normal to each vertex normal
+        if (v0Idx !== -1) calculatedNormals[v0Idx] = add(calculatedNormals[v0Idx], faceNormal);
+        if (v1Idx !== -1) calculatedNormals[v1Idx] = add(calculatedNormals[v1Idx], faceNormal);
+        if (v2Idx !== -1) calculatedNormals[v2Idx] = add(calculatedNormals[v2Idx], faceNormal);
+      });
+
+      // Normalize and scale each vertex normal
+      for (let i = 0; i < calculatedNormals.length; i++) {
+        let norm = normalize(calculatedNormals[i]);
+        // Scale to FF7's normal magnitude and flip Y
+        normals.push({ x: norm.x * 4096, y: norm.y * 4096, z: norm.z * 4096 });
+      }
+    } else {
+      // Use normals from the OBJ file or default if missing
+      for (let i = 0; i < vertices.length; i++) {
         const normalIdx = vertexToNormalIdx[i];
-        normals.push(normalIdx >= 0 ? tempNormals[normalIdx] : { x: 0, y: 0, z: 0 });
+        // Use OBJ normal if valid, otherwise default to flat normal
+        normals.push(normalIdx >= 0 ? tempNormals[normalIdx] : { x: 0, y: -4096, z: 0 });
       }
     }
 

@@ -229,29 +229,6 @@ export interface EnemyData {
   morph: String | null,
 }
 
-export enum LocationName {
-  "Midgar Area" = 0,
-  "Grasslands Area" = 1,
-  "Junon Area" = 2,
-  "Corel Area" = 3,
-  "Gold Saucer Area" = 4,
-  "Gongaga Area" = 5,
-  "Cosmo Area" = 6,
-  "Nibel Area" = 7,
-  "Rocket Launch Pad Area" = 8,
-  "Wutai Area" = 9,
-  "Woodlands Area" = 10,
-  "Icicle Area" = 11,
-  "Mideel Area" = 12,
-  "North Corel Area" = 13,
-  "Cactus Island" = 14,
-  "Goblin Island" = 15,
-  "Round Island" = 16,
-  "Sea" = 17,
-  "Bottom of the Sea" = 18,
-  "Glacier" = 19
-}
-
 export enum ChocoboRating {
   "wonderful" = 1,
   "great" = 2,
