@@ -119,7 +119,7 @@ export function MapTab() {
             onModeChange={handleModeChange}
             enabledAlternatives={enabledAlternatives}
             onAlternativesChange={setEnabledAlternatives}
-            showNormals={false}
+            showNormals={true}
           />
         </div>
         <div className="w-[300px] border-l bg-background pl-3 pr-2 pt-2">

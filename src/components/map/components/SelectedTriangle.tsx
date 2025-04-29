@@ -154,6 +154,50 @@ export function SelectedTriangle({ triangle, textures, onVertexChange }: Selecte
         </div>
 
         <div className="space-y-1.5">
+          <Label>Normals</Label>
+          <div className="rounded-md border bg-muted/50 p-2">
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1.5rem_repeat(3,1fr)] gap-x-1 text-xs">
+                <div className="text-muted-foreground">#</div>
+                <div className="text-muted-foreground text-center">X</div>
+                <div className="text-muted-foreground text-center">Y</div>
+                <div className="text-muted-foreground text-center">Z</div>
+              </div>
+              {[
+                { label: "0", normal: triangle.normal0 },
+                { label: "1", normal: triangle.normal1 },
+                { label: "2", normal: triangle.normal2 }
+              ].map(({ label, normal }, index) => (
+                <div key={label} className="grid grid-cols-[1.5rem_repeat(3,1fr)] gap-x-1">
+                  <div className="text-muted-foreground">{label}</div>
+                  <Input
+                    type="number"
+                    value={normal.x}
+                    step={0.1}
+                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, x: parseFloat(e.target.value) } })}
+                    className="h-6 !text-xs w-full pl-2 pr-1"
+                  />
+                  <Input
+                    type="number"
+                    value={normal.y}
+                    step={0.1}
+                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, y: parseFloat(e.target.value) } })}
+                    className="h-6 !text-xs w-full pl-2 pr-1"
+                  />
+                  <Input
+                    type="number"
+                    value={normal.z}
+                    step={0.1}
+                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, z: parseFloat(e.target.value) } })}
+                    className="h-6 !text-xs w-full pl-2 pr-1"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
           <Label>Texture</Label>
           <div className="rounded-md border bg-muted/50 p-2 space-y-2">
             <div className="space-y-1">

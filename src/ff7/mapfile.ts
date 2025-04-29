@@ -112,6 +112,9 @@ export interface Triangle {
     vVertex1: number;
     vVertex2: number;
     isChocobo?: boolean;
+    normal0: Coords;
+    normal1: Coords;
+    normal2: Coords;
 }
 
 interface RawTriangle {
@@ -166,6 +169,9 @@ export class MapFile {
                 vertex0: mesh.vertices[triangle.vertex0Index],
                 vertex1: mesh.vertices[triangle.vertex1Index],
                 vertex2: mesh.vertices[triangle.vertex2Index],
+                normal0: mesh.normals[triangle.vertex0Index],
+                normal1: mesh.normals[triangle.vertex1Index],
+                normal2: mesh.normals[triangle.vertex2Index],
                 script: triangle.script,
                 type: triangle.type,
                 locationId: triangle.ids >> 9 & 0x1f,

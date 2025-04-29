@@ -61,23 +61,6 @@ export function WorldMesh({
   // Set up global update functions when selected triangle changes
   useEffect(() => {
     if (window && selectedTriangle && updateTriangleUVs && updateTrianglePosition) {
-      (window as any).updateTriangleUVs = function(u0: number, v0: number, u1: number, v1: number, u2: number, v2: number) {
-        updateTriangleUVs(selectedTriangle, u0, v0, u1, v1, u2, v2);
-        addChangedMesh(selectedTriangle.meshOffsetZ / MESH_SIZE, selectedTriangle.meshOffsetX / MESH_SIZE);
-      };
-      (window as any).updateArbitraryTriangleUVs = function(
-        triangle: TriangleWithVertices,
-        u0: number,
-        v0: number,
-        u1: number,
-        v1: number,
-        u2: number,
-        v2: number
-      ) {
-        updateTriangleUVs(triangle, u0, v0, u1, v1, u2, v2);
-        addChangedMesh(triangle.meshOffsetZ / MESH_SIZE, triangle.meshOffsetX / MESH_SIZE);
-      };
-      
       (window as any).updateTrianglePosition = function(
         v0: [number, number, number],
         v1: [number, number, number],
@@ -90,10 +73,9 @@ export function WorldMesh({
     
     // Clean up functions when no triangle is selected or functions aren't available
     return () => {
-      delete (window as any).updateTriangleUVs;
       delete (window as any).updateTrianglePosition;
     }
-  }, [selectedTriangle, updateTriangleUVs, updateTrianglePosition]);
+  }, [selectedTriangle, updateTrianglePosition]);
 
   // Copy the texture atlas to the debug canvas
   useEffect(() => {
@@ -142,7 +124,7 @@ export function WorldMesh({
           const startZ = (vertex.z + offsetZ) * SCALE;
 
           // End point of the line (vertex + scaled normal)
-          const endX = startX - normal.x * SCALE * normalScale / 4096;
+          const endX = startX + normal.x * SCALE * normalScale / 4096;
           const endY = startY - normal.y * SCALE * normalScale / 4096;
           const endZ = startZ - normal.z * SCALE * normalScale / 4096;
 

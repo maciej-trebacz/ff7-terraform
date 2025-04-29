@@ -198,6 +198,9 @@ export function ExportImport() {
           vertex0: vertices[vIdx[0]],
           vertex1: vertices[vIdx[1]],
           vertex2: vertices[vIdx[2]],
+          normal0: tempNormals[vertexToNormalIdx[vIdx[0]]],
+          normal1: tempNormals[vertexToNormalIdx[vIdx[1]]],
+          normal2: tempNormals[vertexToNormalIdx[vIdx[2]]],
           texture: textureInfo?.textureId ?? 0,
           uVertex0: textureUVs[0]?.u ?? 0,
           vVertex0: textureUVs[0]?.v ?? 0,
@@ -250,7 +253,7 @@ export function ExportImport() {
       for (let i = 0; i < calculatedNormals.length; i++) {
         let norm = normalize(calculatedNormals[i]);
         // Scale to FF7's normal magnitude and flip Y
-        normals.push({ x: norm.x * 4096, y: norm.y * 4096, z: norm.z * 4096 });
+        normals.push({ x: -norm.x * 4096, y: norm.y * 4096, z: norm.z * 4096 });
       }
     } else {
       // Use normals from the OBJ file or default if missing
