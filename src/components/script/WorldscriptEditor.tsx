@@ -1,7 +1,7 @@
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/theme-tomorrow_night';
 import 'ace-builds/src-noconflict/ext-language_tools';
-import { addCompleter, setCompleters } from 'ace-builds/src-noconflict/ext-language_tools';
+import { setCompleters } from 'ace-builds/src-noconflict/ext-language_tools';
 import './AceWorldscript.js';
 import { useEffect } from 'react';
 

@@ -1,111 +1,58 @@
-import { useEffect, useRef } from 'react'
-import { EditorView } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
-import { lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, keymap } from '@codemirror/view'
-import { history, historyKeymap } from '@codemirror/commands'
-import { indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language'
-import { defaultKeymap, indentWithTab } from '@codemirror/commands'
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
-import { ff7OpcodesLanguage } from './FF7OpcodesLanguage'
-import { ff7OpcodesTheme } from './FF7OpcodesTheme'
+import AceEditor from 'react-ace';
+import 'ace-builds/src-noconflict/theme-tomorrow_night';
+import 'ace-builds/src-noconflict/ext-language_tools';
+import { setCompleters } from 'ace-builds/src-noconflict/ext-language_tools';
+import './AceOpcodes.js';
+import { useEffect } from 'react';
+import { Mnemonic } from '@/ff7/worldscript/opcodes';
 
 interface OpcodesEditorProps {
-  value: string
-  onChange: (value: string) => void
-  className?: string
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
 }
 
-// Create a basic setup similar to the one in @codemirror/basic-setup
-const basicSetup = [
-  lineNumbers(),
-  highlightActiveLineGutter(),
-  highlightSpecialChars(),
-  history(),
-  foldGutter(),
-  drawSelection(),
-  dropCursor(),
-  EditorState.allowMultipleSelections.of(true),
-  indentOnInput(),
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-  bracketMatching(),
-  closeBrackets(),
-  rectangularSelection(),
-  crosshairCursor(),
-  highlightActiveLine(),
-  highlightSelectionMatches(),
-  keymap.of([
-    ...defaultKeymap,
-    ...searchKeymap,
-    ...historyKeymap,
-    ...foldKeymap,
-    ...closeBracketsKeymap,
-    indentWithTab
-  ])
-]
-
 export function OpcodesEditor({ value, onChange, className }: OpcodesEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null)
-  const editorViewRef = useRef<EditorView | null>(null)
-
+  const mnemonicValues = Object.values(Mnemonic);
+  
   useEffect(() => {
-    if (!editorRef.current) return
-
-    // Clean up any existing editor
-    if (editorViewRef.current) {
-      editorViewRef.current.destroy()
-    }
-
-    // Create a new editor state
-    const state = EditorState.create({
-      doc: value,
-      extensions: [
-        basicSetup,
-        ff7OpcodesLanguage(),
-        ff7OpcodesTheme,
-        EditorView.updateListener.of(update => {
-          if (update.docChanged) {
-            onChange(update.state.doc.toString())
-          }
-        })
-      ]
-    })
-
-    // Create the editor view
-    const view = new EditorView({
-      state,
-      parent: editorRef.current
-    })
-
-    editorViewRef.current = view
-
-    return () => {
-      view.destroy()
-    }
-  }, []) // Only run once on mount
-
-  // Update the editor content when the value prop changes
-  useEffect(() => {
-    const view = editorViewRef.current
-    if (!view) return
-
-    const currentContent = view.state.doc.toString()
-    if (value !== currentContent) {
-      view.dispatch({
-        changes: { from: 0, to: currentContent.length, insert: value }
-      })
-    }
-  }, [value])
+    setCompleters([
+      {
+        getCompletions: (_editor, _session, _pos, _prefix, callback) => {
+          callback(null, mnemonicValues.map(completion => ({
+            name: completion,
+            value: completion,
+            caption: completion,
+            meta: 'keyword',
+            score: 1000,
+          })));
+        }
+      }
+    ]);
+  }, []);
 
   return (
-    <div 
-      ref={editorRef} 
-      className={className}
-      style={{ 
-        width: '100%', 
-        height: '100%',
-        overflow: 'hidden'
+    <AceEditor
+      mode="ff7opcodes"
+      theme="tomorrow_night"
+      onChange={onChange}
+      value={value}
+      name="ff7opcodes-editor"
+      editorProps={{ $blockScrolling: true }}
+      setOptions={{
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: false,
+        enableSnippets: false,
+        showLineNumbers: true,
+        tabSize: 2,
+        useSoftTabs: true,
+        showPrintMargin: false,
+        fontSize: 12,
+        highlightActiveLine: true,
+        highlightGutterLine: true,
       }}
+      className={className}
+      style={{ width: '100%', height: '100%' }}
     />
-  )
+  );
 } 
