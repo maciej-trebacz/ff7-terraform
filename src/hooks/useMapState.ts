@@ -56,11 +56,11 @@ const mapStateAtom = atom<MapState>({
   updateTriangleTexture: undefined,
 })
 
-const MESHES_IN_ROW = 4;
-const MESHES_IN_COLUMN = 4;
+export const MESHES_IN_ROW = 4;
+export const MESHES_IN_COLUMN = 4;
 
 // Map dimensions for different map types
-const dimensions = {
+export const dimensions = {
   overworld: { horizontal: 9, vertical: 7 },
   underwater: { horizontal: 3, vertical: 4 },
   glacier: { horizontal: 2, vertical: 2 }

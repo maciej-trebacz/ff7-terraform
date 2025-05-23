@@ -9,7 +9,7 @@ import { CAMERA_HEIGHT, MESH_SIZE, SCALE, SHOW_DEBUG } from './constants';
 import { CameraDebugInfo, CameraDebugOverlay } from './components/DebugOverlay';
 import { MapControls } from './components/MapControls';
 import { WorldMesh } from './components/WorldMesh';
-import { useMapState, MapType, MapMode } from '@/hooks/useMapState';
+import { useMapState, MapType, MapMode, dimensions, MESHES_IN_ROW, MESHES_IN_COLUMN } from '@/hooks/useMapState';
 import ModelOverlay from './ModelOverlay';
 
 interface MapViewerProps { 
@@ -56,7 +56,7 @@ function MapViewer({
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const perspectiveCameraRef = useRef<ThreePerspectiveCamera>(null);
   const orthographicCameraRef = useRef<ThreeOrthographicCamera>(null);
-  const { worldmap, mapType, mode, setSelectedTriangle } = useMapState();
+  const { worldmap, mapType, mapId, mode, setSelectedTriangle } = useMapState();
   const zoomRef = useRef(1);
 
   // Store camera state for seamless switching between camera types
@@ -99,12 +99,12 @@ function MapViewer({
     setRotation(prev => prev + rotationAngle);
   };
 
-  // Calculate map dimensions and center
+  // Calculate map dimensions based on mapType only, not worldmap data
+  // This prevents unnecessary view resets when alternatives are toggled
   const mapDimensions = useMemo(() => {
-    if (!worldmap || !worldmap.length) return { width: 0, height: 0, center: { x: 0, y: 0, z: 0 } };
-    
-    const sizeZ = worldmap.length * MESH_SIZE * SCALE;
-    const sizeX = worldmap[0].length * MESH_SIZE * SCALE;
+    const mapInfo = dimensions[mapType];
+    const sizeZ = mapInfo.vertical * MESHES_IN_ROW * MESH_SIZE * SCALE;
+    const sizeX = mapInfo.horizontal * MESHES_IN_COLUMN * MESH_SIZE * SCALE;
     
     return {
       width: sizeX,
@@ -115,7 +115,7 @@ function MapViewer({
         z: sizeZ / 2
       }
     };
-  }, [worldmap]);
+  }, [mapType]);
 
   // Camera configuration
   const perspectiveConfig = useMemo(() => {
@@ -235,7 +235,8 @@ function MapViewer({
     resetCameraAndControls();
   };
 
-  // Reset view only on map type change, not camera type change
+  // Reset view only when mapType changes or new map is loaded (mapId changes)
+  // Don't reset when alternatives are toggled as they don't change map dimensions
   useEffect(() => {
     if (mapDimensions.width) {
       const timer = setTimeout(() => {
@@ -244,7 +245,7 @@ function MapViewer({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [mapType, mapDimensions]);
+  }, [mapType, mapId]);
 
   const orthoBase = useMemo(() => ({
     position: [
