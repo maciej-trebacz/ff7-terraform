@@ -6,7 +6,7 @@ import { useGeometry } from './hooks';
 import { useSelectedTriangleGeometry } from './hooks';
 import { RenderingMode, TriangleWithVertices } from '../../types';
 import { Triangle } from '@/ff7/mapfile';
-import { useMapState } from '@/hooks/useMapState';
+import { MapMode, useMapState } from '@/hooks/useMapState';
 import { MESH_SIZE, SCALE } from '../../constants';
 import { GridOverlay } from '../GridOverlay';
 import { SELECTION_Y_OFFSET } from '../../constants';
@@ -23,6 +23,7 @@ interface WorldMeshProps {
   wireframe?: boolean;
   showNormals?: boolean;
   cameraHeight?: number;
+  mode?: MapMode;
 }
 
 export function WorldMesh({ 
@@ -37,16 +38,17 @@ export function WorldMesh({
   wireframe,
   showNormals = false,
   cameraHeight,
+  mode,
 }: WorldMeshProps) {
   const [mouseDownPos, setMouseDownPos] = useState<{ x: number; y: number } | null>(null);
   const [paintingMouseDownPos, setPaintingMouseDownPos] = useState<{ x: number; y: number } | null>(null);
   const [paintingDragActive, setPaintingDragActive] = useState(false);
   const [paintingDragStartMode, setPaintingDragStartMode] = useState<boolean | null>(null);
   const [paintingHasToggled, setPaintingHasToggled] = useState(false);
-  const { textures, worldmap, mapType, addChangedMesh, mode, paintingSelectedTriangles, togglePaintingSelectedTriangle, setTriangleMap } = useMapState();
+  const { textures, worldmap, mapType, addChangedMesh, paintingSelectedTriangles, togglePaintingSelectedTriangle, setTriangleMap } = useMapState();
   
   const { texture, canvas, texturePositions } = useTextureAtlas(textures, mapType);
-  const { geometry, triangleMap, updateTriangleUVs, updateTrianglePosition, updateColors, updateTriangleTexture } = useGeometry(worldmap, mapType, renderingMode, textures, texturePositions);
+  const { geometry, normalLinesGeometry, triangleMap, updateTriangleUVs, updateTrianglePosition, updateColors, updateTriangleTexture, updateTriangleNormals } = useGeometry(worldmap, mapType, renderingMode, textures, texturePositions);
   const selectedTriangleGeometry = useSelectedTriangleGeometry(triangleMap, selectedFaceIndex);
 
   const selectedTriangle = triangleMap?.[selectedFaceIndex];
@@ -54,7 +56,7 @@ export function WorldMesh({
   // Update triangleMap in global state whenever it changes
   useEffect(() => {
     if (triangleMap) {
-      setTriangleMap(triangleMap, updateColors, updateTriangleTexture);
+      setTriangleMap(triangleMap, updateColors, updateTriangleTexture, updateTriangleNormals);
     }
   }, [triangleMap, setTriangleMap]);
 
@@ -88,71 +90,12 @@ export function WorldMesh({
     }
   }, [canvas, debugCanvasRef]);
 
-  // Create normal visualization geometry
-  const normalLinesGeometry = useMemo(() => {
-    if (!geometry || !showNormals || !worldmap || !triangleMap) return null;
-
-    // Count total vertices to allocate buffer
-    let totalVertices = 0;
-    for (let row = 0; row < worldmap.length; row++) {
-      for (let col = 0; col < worldmap[row].length; col++) {
-        totalVertices += worldmap[row][col].vertices.length;
-      }
-    }
-
-    const linePositions = new Float32Array(totalVertices * 6); // 2 points per normal line (start and end)
-    let offset = 0;
-
-    // Process each mesh in the worldmap
-    for (let row = 0; row < worldmap.length; row++) {
-      for (let col = 0; col < worldmap[row].length; col++) {
-        const mesh = worldmap[row][col];
-        const offsetX = col * MESH_SIZE;
-        const offsetZ = row * MESH_SIZE;
-
-        // For each vertex in the mesh
-        for (let i = 0; i < mesh.vertices.length; i++) {
-          const vertex = mesh.vertices[i];
-          const normal = mesh.normals[i];
-
-          // Scale factor for normal visualization
-          const normalScale = 500;
-
-          // Start point of the line (vertex position)
-          const startX = (vertex.x + offsetX) * SCALE;
-          const startY = vertex.y * SCALE;
-          const startZ = (vertex.z + offsetZ) * SCALE;
-
-          // End point of the line (vertex + scaled normal)
-          const endX = startX + normal.x * SCALE * normalScale / 4096;
-          const endY = startY - normal.y * SCALE * normalScale / 4096;
-          const endZ = startZ - normal.z * SCALE * normalScale / 4096;
-
-          // Add line segment
-          linePositions[offset] = startX;
-          linePositions[offset + 1] = startY;
-          linePositions[offset + 2] = startZ;
-          linePositions[offset + 3] = endX;
-          linePositions[offset + 4] = endY;
-          linePositions[offset + 5] = endZ;
-
-          offset += 6;
-        }
-      }
-    }
-
-    const normalGeometry = new THREE.BufferGeometry();
-    normalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
-    return normalGeometry;
-  }, [geometry, showNormals, worldmap, triangleMap]);
-
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    if (showGrid) return;
     setMouseDownPos({ x: event.clientX, y: event.clientY });
   };
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    if (showGrid || !mouseDownPos || !onTriangleSelect) return;
+    if (mode === 'export' || !mouseDownPos || !onTriangleSelect) return;
 
     // Check if mouse moved more than 5 pixels in any direction
     const dx = Math.abs(event.clientX - mouseDownPos.x);
@@ -263,7 +206,7 @@ export function WorldMesh({
               />
             </lineSegments>
           )}
-          {!showGrid && onTriangleSelect && selectedTriangleGeometry && mode !== 'painting' && (
+          {onTriangleSelect && selectedTriangleGeometry && (
             <lineSegments renderOrder={10}>
               <edgesGeometry attach="geometry" args={[selectedTriangleGeometry]} />
               <lineBasicMaterial 

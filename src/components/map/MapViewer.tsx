@@ -22,6 +22,7 @@ interface MapViewerProps {
   showNormals?: boolean,
   onWireframeToggle?: (checked: boolean) => void,
   onGridToggle?: (checked: boolean) => void,
+  onNormalsToggle?: (checked: boolean) => void,
   onRenderingModeChange?: (mode: RenderingMode) => void,
   onMapTypeChange?: (type: MapType) => void,
   onModeChange?: (mode: MapMode) => void,
@@ -39,6 +40,7 @@ function MapViewer({
   showNormals = false,
   onWireframeToggle,
   onGridToggle,
+  onNormalsToggle,
   onRenderingModeChange,
   onMapTypeChange,
   onModeChange,
@@ -207,6 +209,8 @@ function MapViewer({
         onGridToggle={onGridToggle}
         showModels={showModels}
         onModelsToggle={() => setShowModels(prev => !prev)}
+        showNormals={showNormals}
+        onNormalsToggle={onNormalsToggle}
         renderingMode={localRenderingMode}
         onRenderingModeChange={handleRenderingModeChange}
         mapType={mapType}
@@ -267,10 +271,11 @@ function MapViewer({
               debugCanvasRef={debugCanvasRef}
               mapCenter={mapDimensions.center}
               rotation={rotation}
-              showGrid={mode === 'export' || showGrid}
+              showGrid={showGrid}
               wireframe={wireframe}
               showNormals={showNormals}
               cameraHeight={camera?.position.y}
+              mode={mode}
             />
           )}
           {showModels && <ModelOverlay zoomRef={zoomRef} />}

@@ -28,6 +28,7 @@ export function MapTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [showWireframe, setShowWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [showNormals, setShowNormals] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -119,7 +120,8 @@ export function MapTab() {
             onModeChange={handleModeChange}
             enabledAlternatives={enabledAlternatives}
             onAlternativesChange={setEnabledAlternatives}
-            showNormals={true}
+            showNormals={showNormals}
+            onNormalsToggle={setShowNormals}
           />
         </div>
         <div className="w-[300px] border-l bg-background pl-3 pr-2 pt-2">

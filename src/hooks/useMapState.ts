@@ -37,6 +37,7 @@ interface MapState {
   selectedTriangle: number | null
   updateColors?: () => void
   updateTriangleTexture?: (triangle: TriangleWithVertices) => void
+  updateTriangleNormals?: (triangle: TriangleWithVertices, normal0: { x: number; y: number; z: number }, normal1: { x: number; y: number; z: number }, normal2: { x: number; y: number; z: number }) => void
 }
 
 const mapStateAtom = atom<MapState>({
@@ -52,7 +53,7 @@ const mapStateAtom = atom<MapState>({
   triangleMap: null,
   selectedTriangle: null,
   updateColors: undefined,
-  updateTriangleTexture: undefined
+  updateTriangleTexture: undefined,
 })
 
 const MESHES_IN_ROW = 4;
@@ -235,6 +236,9 @@ export function useMapState() {
     vVertex1?: number;
     uVertex2?: number;
     vVertex2?: number;
+    normal0?: { x: number; y: number; z: number };
+    normal1?: { x: number; y: number; z: number };
+    normal2?: { x: number; y: number; z: number };
   }
 
   const updateTriangle = (triangle: TriangleWithVertices, updates: TriangleUpdates): [number, number] => {
@@ -252,6 +256,9 @@ export function useMapState() {
     if (updates.vVertex1 !== undefined) triangle.vVertex1 = updates.vVertex1;
     if (updates.uVertex2 !== undefined) triangle.uVertex2 = updates.uVertex2;
     if (updates.vVertex2 !== undefined) triangle.vVertex2 = updates.vVertex2;
+    if (updates.normal0 !== undefined) triangle.normal0 = updates.normal0;
+    if (updates.normal1 !== undefined) triangle.normal1 = updates.normal1;
+    if (updates.normal2 !== undefined) triangle.normal2 = updates.normal2;
 
     // Update the underlying triangle data using trianglePtr
     if (updates.type !== undefined) triangle.trianglePtr.type = updates.type;
@@ -265,10 +272,19 @@ export function useMapState() {
     if (updates.vVertex1 !== undefined) triangle.trianglePtr.vVertex1 = updates.vVertex1;
     if (updates.uVertex2 !== undefined) triangle.trianglePtr.uVertex2 = updates.uVertex2;
     if (updates.vVertex2 !== undefined) triangle.trianglePtr.vVertex2 = updates.vVertex2;
+    if (updates.normal0 !== undefined) triangle.trianglePtr.normal0 = updates.normal0;
+    if (updates.normal1 !== undefined) triangle.trianglePtr.normal1 = updates.normal1;
+    if (updates.normal2 !== undefined) triangle.trianglePtr.normal2 = updates.normal2;
 
     if (updates.texture !== undefined || updates.uVertex0 !== undefined || updates.vVertex0 !== undefined || updates.uVertex1 !== undefined || updates.vVertex1 !== undefined || updates.uVertex2 !== undefined || updates.vVertex2 !== undefined) {
       if (state.updateTriangleTexture) {
         state.updateTriangleTexture(triangle);
+      }
+    }
+
+    if (updates.normal0 !== undefined || updates.normal1 !== undefined || updates.normal2 !== undefined) {
+      if (state.updateTriangleNormals) {
+        state.updateTriangleNormals(triangle, updates.normal0, updates.normal1, updates.normal2);
       }
     }
 
@@ -354,8 +370,8 @@ export function useMapState() {
     });
   };
 
-  const setTriangleMap = useCallback((triangleMap: TriangleWithVertices[], updateColors?: () => void, updateTriangleTexture?: (triangle: TriangleWithVertices) => void) => {
-    setState(prev => ({ ...prev, triangleMap, updateColors, updateTriangleTexture }));
+  const setTriangleMap = useCallback((triangleMap: TriangleWithVertices[], updateColors?: () => void, updateTriangleTexture?: (triangle: TriangleWithVertices) => void, updateTriangleNormals?: (triangle: TriangleWithVertices, normal0: { x: number; y: number; z: number }, normal1: { x: number; y: number; z: number }, normal2: { x: number; y: number; z: number }) => void) => {
+    setState(prev => ({ ...prev, triangleMap, updateColors, updateTriangleTexture, updateTriangleNormals }));
   }, [setState]);
 
   // Added updateSectionMesh: updates a single mesh in the worldmap and tracks it as changed

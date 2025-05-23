@@ -1,6 +1,6 @@
 import { useMemo, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import { Mesh } from '@/ff7/mapfile';
+import { Mesh, Triangle } from '@/ff7/mapfile';
 import { WorldMapTexture } from '@/ff7/texfile';
 import { MapType, RenderingMode, TriangleWithVertices } from '../../types';
 import { LOCATION_COLORS, MESH_SIZE, REGION_COLORS, SCALE, SCRIPT_COLORS, SELECTION_Y_OFFSET, ATLAS_SIZE } from '../../constants';
@@ -36,7 +36,7 @@ export function useGeometry(
   const geometryRef = useRef<THREE.BufferGeometry | null>(null);
   const triangleMapRef = useRef<TriangleWithVertices[] | null>(null);
   // New ref to track mapping from vertex ID to positions buffer offsets.
-  const vertexOffsetsRef = useRef<Map<number, number[]> | null>(null);
+  const vertexOffsetsRef = useRef<Map<number, [number, Triangle][]> | null>(null);
 
   const result = useMemo(() => {
     if (!worldmap || !worldmap.length) return { geometry: null, triangleMap: null };
@@ -62,7 +62,7 @@ export function useGeometry(
     // For shared vertices, assign a unique ID and record where in the positions buffer they are written.
     let vertexIdCounter = 0;
     const uniqueVertexMap = new Map<string, number>(); // key -> vertexId
-    const vertexIdToOffsets = new Map<number, number[]>(); // vertexId -> [offsets]
+    const vertexIdToOffsets = new Map<number, [number, Triangle][]>(); // vertexId -> [offsets]
 
     const terrainColorMap = LOCATION_COLORS[mapType];
     const regionColorMap = REGION_COLORS[mapType];
@@ -119,7 +119,7 @@ export function useGeometry(
               vertexIdToOffsets.set(vertexId, []);
             }
             // Record this occurrence (offset in the positions array) for the vertexId.
-            vertexIdToOffsets.get(vertexId)!.push(offset);
+            vertexIdToOffsets.get(vertexId)!.push([offset, tri]);
 
             // Write position and color into buffers.
             positions[offset] = x;
@@ -189,6 +189,70 @@ export function useGeometry(
 
     return { geometry: geom, triangleMap };
   }, [worldmap, mapType, renderingMode, textures, texturePositions]);
+
+  // Create normal visualization geometry
+  const normalsMapRef = useRef<Map<string, number>>(new Map());
+
+  const normalLinesGeometry = useMemo(() => {
+    if (!geometryRef.current || !worldmap || !triangleMapRef.current) return null;
+
+    // Count total vertices to allocate buffer
+    let totalVertices = 0;
+    for (let row = 0; row < worldmap.length; row++) {
+      for (let col = 0; col < worldmap[row].length; col++) {
+        totalVertices += worldmap[row][col].vertices.length;
+      }
+    }
+
+    const linePositions = new Float32Array(totalVertices * 6); // 2 points per normal line (start and end)
+    let offset = 0;
+    normalsMapRef.current.clear();
+
+    // Process each mesh in the worldmap
+    for (let row = 0; row < worldmap.length; row++) {
+      for (let col = 0; col < worldmap[row].length; col++) {
+        const mesh = worldmap[row][col];
+        const offsetX = col * MESH_SIZE;
+        const offsetZ = row * MESH_SIZE;
+
+        // For each vertex in the mesh
+        for (let i = 0; i < mesh.vertices.length; i++) {
+          const vertex = mesh.vertices[i];
+          const normal = mesh.normals[i];
+
+          // Store the mapping between vertex ID and line position offset
+          normalsMapRef.current.set(`${row},${col},${i}`, offset);
+
+          // Scale factor for normal visualization
+          const normalScale = 500;
+
+          // Start point of the line (vertex position)
+          const startX = (vertex.x + offsetX) * SCALE;
+          const startY = vertex.y * SCALE;
+          const startZ = (vertex.z + offsetZ) * SCALE;
+
+          // End point of the line (vertex + scaled normal)
+          const endX = startX + normal.x * SCALE * normalScale / 4096;
+          const endY = startY - normal.y * SCALE * normalScale / 4096;
+          const endZ = startZ - normal.z * SCALE * normalScale / 4096;
+
+          // Add line segment
+          linePositions[offset] = startX;
+          linePositions[offset + 1] = startY;
+          linePositions[offset + 2] = startZ;
+          linePositions[offset + 3] = endX;
+          linePositions[offset + 4] = endY;
+          linePositions[offset + 5] = endZ;
+
+          offset += 6;
+        }
+      }
+    }
+
+    const normalGeometry = new THREE.BufferGeometry();
+    normalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+    return normalGeometry;
+  }, [geometryRef.current, worldmap, triangleMapRef.current]);
 
   const updateTriangleUVs = useCallback((
     triangle: TriangleWithVertices,
@@ -264,15 +328,20 @@ export function useGeometry(
 
     // For each vertex in the triangle, use its unique ID to update every occurrence.
     triangle.vertexIds.forEach((vertexId, i) => {
-      const offsets = vertexOffsetsRef.current!.get(vertexId);
+      const offsets = vertexOffsetsRef.current?.get(vertexId);
       if (!offsets) return;
       const newX = (newVertices[i][0] + triangle.meshOffsetX) * SCALE;
       const newY = newVertices[i][1] * SCALE;
       const newZ = (newVertices[i][2] + triangle.meshOffsetZ) * SCALE;
-      offsets.forEach((posOffset) => {
+      offsets.forEach(([posOffset, tri]) => {
         positions[posOffset] = newX;
         positions[posOffset + 1] = newY;
         positions[posOffset + 2] = newZ;
+
+        const triangle = triangleMapRef.current.find(t => t.trianglePtr === tri);
+        if (!triangle) return;
+        triangle.transformedVertices[`v${i}`] = [newX, newY, newZ];
+
       });
       // Update the cached transformed vertices.
       triangle.transformedVertices[`v${i}`] = [newX, newY, newZ];
@@ -375,14 +444,64 @@ export function useGeometry(
     uvs[uvOffset + 5] = v2;
 
     uvAttribute.needsUpdate = true;
-  }, [textures, texturePositions, triangleMapRef, geometryRef]); // Add triangleMapRef and geometryRef to dependencies
+  }, [textures, texturePositions, triangleMapRef, geometryRef]);
+
+  const updateTriangleNormals = useCallback((
+    triangle: TriangleWithVertices,
+    normal0: { x: number, y: number, z: number },
+    normal1: { x: number, y: number, z: number },
+    normal2: { x: number, y: number, z: number }
+  ) => {
+    if (!geometryRef.current || !triangleMapRef.current || !vertexOffsetsRef.current) return;
+
+    const normalGeometry = normalLinesGeometry;
+    if (!normalGeometry) return;
+
+    const positionAttribute = normalGeometry.getAttribute('position') as THREE.BufferAttribute;
+    const positions = positionAttribute.array as Float32Array;
+
+    // Scale factor for normal visualization (same as in useGeometry)
+    const normalScale = 500;
+
+    const row = triangle.meshOffsetZ / MESH_SIZE;
+    const col = triangle.meshOffsetX / MESH_SIZE;
+
+    const i = normal0 ? 0 : normal1 ? 1 : 2;
+    const normal = i === 0 ? normal0 : i === 1 ? normal1 : normal2;
+    const vertex = triangle.trianglePtr[`vertex${i}`];
+
+    const lineOffset = normalsMapRef.current.get(`${row},${col},${worldmap[row][col].vertices.indexOf(vertex)}`);
+    if (lineOffset === undefined) return;
+
+    const offsetX = col * MESH_SIZE;
+    const offsetZ = row * MESH_SIZE;
+
+    // Start point of the line (vertex position)
+    const startX = (vertex.x + offsetX) * SCALE;
+    const startY = vertex.y * SCALE;
+    const startZ = (vertex.z + offsetZ) * SCALE;    
+
+    // Start point is the vertex position (already in world space)
+    positions[lineOffset] = startX;
+    positions[lineOffset + 1] = startY;
+    positions[lineOffset + 2] = startZ;
+
+    // End point is vertex + scaled normal
+    positions[lineOffset + 3] = startX + normal.x * SCALE * normalScale / 4096;
+    positions[lineOffset + 4] = startY - normal.y * SCALE * normalScale / 4096;
+    positions[lineOffset + 5] = startZ - normal.z * SCALE * normalScale / 4096;
+
+    positionAttribute.needsUpdate = true;
+  }, [normalLinesGeometry]);
 
   return {
     ...result,
+    normalLinesGeometry,
     updateTriangleUVs,
     updateTrianglePosition,
     updateColors,
     updateTriangleTexture,
+    updateTriangleNormals,
   };
 }
 

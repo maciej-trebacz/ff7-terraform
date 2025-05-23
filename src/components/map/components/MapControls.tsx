@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { RotateCcw, RotateCw, Home, Grid, Grip, Boxes, MousePointer, Download, Brush, Map } from 'lucide-react';
+import { RotateCcw, RotateCw, Home, Grid, Grip, Boxes, MousePointer, Download, Brush, Map, ArrowUpRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RenderingMode } from '../types';
 import { MapType, MapMode } from '@/hooks/useMapState';
@@ -25,6 +25,8 @@ interface MapControlsProps {
   onGridToggle?: (checked: boolean) => void;
   showModels?: boolean;
   onModelsToggle?: () => void;
+  showNormals?: boolean;
+  onNormalsToggle?: (checked: boolean) => void;
   renderingMode: RenderingMode;
   onRenderingModeChange: (mode: RenderingMode) => void;
   mapType: MapType;
@@ -44,6 +46,8 @@ export function MapControls({
   onGridToggle,
   showModels = false,
   onModelsToggle,
+  showNormals = false,
+  onNormalsToggle,
   renderingMode,
   onRenderingModeChange,
   mapType,
@@ -211,6 +215,27 @@ export function MapControls({
               </Tooltip>
             </TooltipProvider>
           )}
+
+          {onNormalsToggle && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showNormals ? "default" : "outline"}
+                    size="icon"
+                    className={`h-6 w-6 ${showNormals ? 'bg-primary hover:bg-primary/90' : ''}`}
+                    onClick={() => onNormalsToggle(!showNormals)}
+                  >
+                    <ArrowUpRight className={`h-3.5 w-3.5 ${showNormals ? 'text-primary-foreground' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  <p>Toggle normals {showNormals ? '(on)' : '(off)'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           <Popover>
             <PopoverTrigger asChild>
               <Button

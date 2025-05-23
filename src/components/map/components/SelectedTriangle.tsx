@@ -174,21 +174,21 @@ export function SelectedTriangle({ triangle, textures, onVertexChange }: Selecte
                     type="number"
                     value={normal.x}
                     step={0.1}
-                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, x: parseFloat(e.target.value) } })}
+                    onChange={(e) => handlePropertyChange({ [`normal${index}`]: { ...normal, x: parseFloat(e.target.value) } })}
                     className="h-6 !text-xs w-full pl-2 pr-1"
                   />
                   <Input
                     type="number"
                     value={normal.y}
                     step={0.1}
-                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, y: parseFloat(e.target.value) } })}
+                    onChange={(e) => handlePropertyChange({ [`normal${index}`]: { ...normal, y: parseFloat(e.target.value) } })}
                     className="h-6 !text-xs w-full pl-2 pr-1"
                   />
                   <Input
                     type="number"
                     value={normal.z}
                     step={0.1}
-                    onChange={(e) => handlePropertyChange({ [`normal${index + 1}`]: { ...normal, z: parseFloat(e.target.value) } })}
+                    onChange={(e) => handlePropertyChange({ [`normal${index}`]: { ...normal, z: parseFloat(e.target.value) } })}
                     className="h-6 !text-xs w-full pl-2 pr-1"
                   />
                 </div>

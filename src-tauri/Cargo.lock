@@ -1039,6 +1039,8 @@ dependencies = [
 name = "ff7-lib"
 version = "1.4.5"
 dependencies = [
+ "byteorder",
+ "flate2",
  "lazy_static",
  "log",
  "parking_lot",
