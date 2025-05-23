@@ -59,6 +59,14 @@ function MapViewer({
   const { worldmap, mapType, mode, setSelectedTriangle } = useMapState();
   const zoomRef = useRef(1);
 
+  // Store camera state for seamless switching between camera types
+  const cameraStateRef = useRef({
+    position: new Vector3(),
+    target: new Vector3(),
+    zoom: 1
+  });
+  const previousCameraTypeRef = useRef(cameraType);
+
   // Update local rendering mode when prop changes
   useEffect(() => {
     setLocalRenderingMode(renderingMode);
@@ -124,9 +132,72 @@ function MapViewer({
       far:    1000000,
       up:     [0, 0, -1] as [number, number, number]
     };
-  }, [mapDimensions, mapType, cameraType]);
+  }, [mapDimensions, mapType]);
 
   const camera = cameraType === 'perspective' ? perspectiveCameraRef.current : orthographicCameraRef.current;
+  
+  // Store current camera state before switching
+  const storeCameraState = () => {
+    const currentCamera = previousCameraTypeRef.current === 'perspective' 
+      ? perspectiveCameraRef.current 
+      : orthographicCameraRef.current;
+    
+    if (currentCamera && controlsRef.current) {
+      cameraStateRef.current.position.copy(currentCamera.position);
+      cameraStateRef.current.target.copy(controlsRef.current.target);
+      
+      if (currentCamera instanceof ThreeOrthographicCamera) {
+        cameraStateRef.current.zoom = currentCamera.zoom;
+      } else if (currentCamera instanceof ThreePerspectiveCamera) {
+        // For perspective camera, calculate zoom based on camera distance
+        const distance = currentCamera.position.y;
+        cameraStateRef.current.zoom = CAMERA_HEIGHT[mapType] / distance;
+      }
+    }
+  };
+
+  // Restore camera state after switching
+  const restoreCameraState = () => {
+    const newCamera = cameraType === 'perspective' 
+      ? perspectiveCameraRef.current 
+      : orthographicCameraRef.current;
+    
+    if (newCamera && controlsRef.current && cameraStateRef.current) {
+      newCamera.position.copy(cameraStateRef.current.position);
+      newCamera.lookAt(cameraStateRef.current.target);
+      
+      if (newCamera instanceof ThreeOrthographicCamera) {
+        newCamera.zoom = cameraStateRef.current.zoom;
+        newCamera.updateProjectionMatrix();
+      } else if (newCamera instanceof ThreePerspectiveCamera) {
+        // For perspective camera, adjust position based on stored zoom
+        const targetDistance = CAMERA_HEIGHT[mapType] / cameraStateRef.current.zoom;
+        const direction = new Vector3().subVectors(newCamera.position, cameraStateRef.current.target).normalize();
+        newCamera.position.copy(cameraStateRef.current.target).add(direction.multiplyScalar(targetDistance));
+        newCamera.lookAt(cameraStateRef.current.target);
+      }
+      
+      controlsRef.current.object = newCamera;
+      controlsRef.current.target.copy(cameraStateRef.current.target);
+      controlsRef.current.update();
+    }
+  };
+
+  // Handle camera type switching to preserve state
+  useEffect(() => {
+    if (previousCameraTypeRef.current !== cameraType && mapDimensions.width) {
+      storeCameraState();
+      
+      // Small delay to allow new camera to be created
+      const timer = setTimeout(() => {
+        restoreCameraState();
+        previousCameraTypeRef.current = cameraType;
+      }, 50);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [cameraType, mapDimensions]);
+
   const resetCameraAndControls = () => {
     if (!camera || !mapDimensions.width) return;
     // Reset rotation
@@ -142,6 +213,7 @@ function MapViewer({
       camera.right = halfWidth;
       camera.top = halfHeight;
       camera.bottom = -halfHeight;
+      camera.zoom = 1;
     }
     camera.updateProjectionMatrix();
 
@@ -151,6 +223,11 @@ function MapViewer({
       controlsRef.current.target.set(mapDimensions.center.x, 0, mapDimensions.center.z);
       controlsRef.current.update();
     }
+
+    // Update stored camera state to match reset
+    cameraStateRef.current.position.set(mapDimensions.center.x, CAMERA_HEIGHT[mapType], mapDimensions.center.z);
+    cameraStateRef.current.target.set(mapDimensions.center.x, 0, mapDimensions.center.z);
+    cameraStateRef.current.zoom = 1;
   };
 
   // New resetView handler that wraps the helper and sets view centered
@@ -158,16 +235,16 @@ function MapViewer({
     resetCameraAndControls();
   };
 
-  // Replace the useEffect that resets view on map or camera type change with a unified one
+  // Reset view only on map type change, not camera type change
   useEffect(() => {
     if (mapDimensions.width) {
       const timer = setTimeout(() => {
-        console.debug('[MapViewer] Reset view on map/type change');
+        console.debug('[MapViewer] Reset view on map change');
         resetView();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [mapType, cameraType, mapDimensions]);
+  }, [mapType, mapDimensions]);
 
   const orthoBase = useMemo(() => ({
     position: [

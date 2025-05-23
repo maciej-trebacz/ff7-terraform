@@ -61,6 +61,31 @@ Uses Jotai for reactive state with domain-specific hooks:
 - `useScriptState` - Script editor state
 - `useMessagesState` - Message editing state
 
+## 3D Map Editor
+
+The MapViewer component provides a sophisticated 3D editor for FF7 world maps using Three.js and React Three Fiber.
+
+### Key Features
+- **Multiple Rendering Modes**: `textured` (full textures), `terrain` (terrain type colors), `region` (region ID colors), `scripts` (script/chocobo data colors)
+- **Dual Camera System**: Perspective camera with map-specific heights (Overworld: 10,200, Underwater: 5,800, Great Glacier: 2,900 units) + orthographic option
+- **Triangle Selection**: Single-select for detailed editing, painting mode for multi-select with click/drag
+- **Visual Overlays**: Wireframe, grid, normals visualization, 3D model overlays
+- **Map orientation and Controls**: The map view always starts with the map being visible from the top with the camera being positioned at the center and above the map, and zoomed in just enough to fit the whole map in the viewer container.
+
+### Map Types
+- **Overworld**: 9×7 sections (36×28 meshes total)
+- **Underwater**: 3×4 sections (12×16 meshes total)  
+- **Great Glacier**: 2×2 sections (8×8 meshes total)
+
+### Technical Implementation
+- **Coordinate System**: FF7 coordinates scaled by 0.05 factor, 8192 units per mesh section
+- **Mesh Construction**: Built from `wmX.MAP` triangle data with cached world positions
+- **Texture System**: 2048×2048 texture atlas with positioning maps
+- **State Management**: Jotai atoms track modifications, mesh updates, triangle selections
+- **Real-time Updates**: Geometry updates immediately via function injection
+
+Key files: `MapViewer.tsx` (main component), `WorldMesh/` (mesh rendering), `useMapState.ts` (state management)
+
 ## Testing
 
-Run tests with `npm test` using Vitest. Tests focus on FF7 file format parsing and core utilities.
+After implementing requested changes do NOT run any scripts, just say that you're finished. I'm always having the app open with hot reload turned on so running dev server again is unnecessary.
