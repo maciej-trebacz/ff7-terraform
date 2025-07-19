@@ -47,9 +47,9 @@ export class Worldscript {
     10: { name: 'check_if_riding_chocobo', type: 'byte' },
     11: { name: 'battle_result', type: 'bit' },
     12: { name: 'prompt_window_result', type: 'byte' },
-    13: { name: 'unknown_0d', type: 'byte' },
-    14: { name: 'unknown_0e', type: 'byte' },
-    15: { name: 'unknown_0f', type: 'byte' },
+    13: { name: 'current_triangle_script_id', type: 'byte' },
+    14: { name: 'party_leader_model_id', type: 'byte' },
+    15: { name: 'unknown_15', type: 'byte' },
     16: { name: 'random_8bit_number', type: 'byte' },
   };
 
@@ -671,7 +671,8 @@ export class Worldscript {
   }
   public compile(luaCode: string): string {
     this.labelCounter = 0; // Reset label counter for each compilation
-    const tokens = this.tokenize(luaCode);
+    const codeWithoutComments = this.stripComments(luaCode);
+    const tokens = this.tokenize(codeWithoutComments);
     const parser = new Parser(tokens);
     const ast = parser.parse();
     const processedAst = this.addResets(ast);
@@ -740,10 +741,55 @@ export class Worldscript {
     return processedAst;
   }
 
+  private stripComments(code: string): string {
+    const lines = code.split('\n');
+    const processedLines = lines.map(line => {
+      const commentIndex = line.indexOf('--');
+      if (commentIndex === -1) {
+        return line;
+      }
+
+      // Check if the '--' is inside a string literal
+      let inSingleQuote = false;
+      let inDoubleQuote = false;
+      let escaped = false;
+
+      for (let i = 0; i < commentIndex; i++) {
+        const char = line[i];
+
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (char === '\\') {
+          escaped = true;
+          continue;
+        }
+
+        if (char === "'" && !inDoubleQuote) {
+          inSingleQuote = !inSingleQuote;
+        } else if (char === '"' && !inSingleQuote) {
+          inDoubleQuote = !inDoubleQuote;
+        }
+      }
+
+      // If we're inside a string literal, the '--' is not a comment
+      if (inSingleQuote || inDoubleQuote) {
+        return line;
+      }
+
+      // Remove the comment part (everything from '--' to end of line)
+      return line.substring(0, commentIndex).trimEnd();
+    });
+
+    return processedLines.join('\n');
+  }
+
   private tokenize(code: string): Token[] {
     const tokens: Token[] = [];
     const regex = /\s*(::|<=|>=|==|!=|<<|>>|<|>|or|and|!|-|\+|\*|\/|\||\&|\[|\]|\w+|\d+|[\.\(\),=:])\s*/g;
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = regex.exec(code)) !== null) {
       const value = match[1];
       if (value === '::') tokens.push({ type: 'label_delim', value });
@@ -871,7 +917,7 @@ export class Worldscript {
             const base = this.namespaceBases['Savemap'];
             const offset = address - base;
             const type = mappingEntry[1].type;
-            let mnemonic;
+            let mnemonic: string;
             if (type === 'word') {
               mnemonic = 'PUSH_SAVEMAP_WORD';
             } else if (type === 'byte') {

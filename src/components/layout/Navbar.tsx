@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/tooltip"
 import { useLgpState } from "@/hooks/useLgpState"
 import { useMapState } from "@/hooks/useMapState"
+import { useScriptsState } from "@/hooks/useScriptState"
 
 export function Navbar() {
   const { setMessage } = useStatusBar()
   const { alert, showAlert, hideAlert, setDataPath } = useAppState()
   const { saveMessages } = useMessagesState()
   const { saveMap } = useMapState()
+  const { saveScripts } = useScriptsState()
   const { loadLgp, opened } = useLgpState() 
 
   const clearFocus = () => {
@@ -59,6 +61,7 @@ export function Navbar() {
       clearFocus()
       await saveMessages()
       await saveMap()
+      await saveScripts()
     } catch (error) {
       showAlert("Error", (error as Error).message)
     }

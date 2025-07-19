@@ -3,6 +3,7 @@ import { useStatusBar } from './useStatusBar'
 import { useLgpState } from './useLgpState'
 import { MapId } from './useMapState'
 import { EvFile, FF7Function, FunctionType, SystemFunction, ModelFunction, MeshFunction } from '@/ff7/evfile'
+import { Worldscript } from '@/ff7/worldscript/worldscript'
 
 interface SelectedScript {
   type: FunctionType
@@ -36,7 +37,7 @@ const scriptsStateAtom = atom<ScriptsState>({
 export function useScriptsState() {
   const [state, setState] = useAtom(scriptsStateAtom)
   const { setMessage } = useStatusBar()
-  const { getFile } = useLgpState()
+  const { getFile, setFile } = useLgpState()
 
   const loadScripts = async (mapId?: MapId) => {
     try {
@@ -193,6 +194,122 @@ export function useScriptsState() {
     }))
   }
 
+  const addModelScript = async (modelId: number, functionId: number) => {
+    try {
+      if (!state.ev) {
+        throw new Error("No scripts loaded")
+      }
+
+      const newFunction = state.ev.addModelFunction(modelId, functionId)
+
+      // Update the functions list to match the EvFile's functions array
+      setState(prev => ({
+        ...prev,
+        functions: state.ev!.functions
+      }))
+
+      // Select the new script
+      selectScript(newFunction)
+
+      setMessage(`Added new model script ${modelId}:${functionId}`)
+      return newFunction
+    } catch (error) {
+      console.error("Error adding model script:", error)
+      setMessage("Failed to add model script: " + (error as Error).message, true)
+      throw error
+    }
+  }
+
+  const addMeshScript = async (x: number, y: number, functionId: number) => {
+    try {
+      if (!state.ev) {
+        throw new Error("No scripts loaded")
+      }
+
+      const newFunction = state.ev.addMeshFunction(x, y, functionId)
+
+      // Update the functions list to match the EvFile's functions array
+      setState(prev => ({
+        ...prev,
+        functions: state.ev!.functions
+      }))
+
+      // Select the new script
+      selectScript(newFunction)
+
+      setMessage(`Added new mesh script ${x},${y}:${functionId}`)
+      return newFunction
+    } catch (error) {
+      console.error("Error adding mesh script:", error)
+      setMessage("Failed to add mesh script: " + (error as Error).message, true)
+      throw error
+    }
+  }
+
+  const saveScripts = async () => {
+    if (!state.ev) {
+      setMessage("No scripts loaded to save", true)
+      return
+    }
+
+    try {
+      console.time("[Scripts] Saving scripts")
+      setMessage("Compiling and saving scripts...")
+
+      // Create a copy of the EvFile to work with
+      const evFile = state.ev
+
+      // Process all functions and update their scripts if they have been modified
+      // Use the EvFile's functions array as the source of truth
+      for (let i = 0; i < evFile.functions.length; i++) {
+        const func = evFile.functions[i]
+        const scriptKey = getScriptKey(func)
+
+        // Check if this function has a decompiled script that needs to be compiled
+        if (state.decompiledScripts[scriptKey]) {
+          const decompiledContent = state.decompiledScripts[scriptKey]
+
+          try {
+            // Compile the decompiled Lua code back to opcodes
+            const worldscript = new Worldscript(func.offset)
+            const compiledScript = worldscript.compile(decompiledContent)
+
+            // Update the function's script in the EvFile
+            evFile.setFunctionScript(i, compiledScript)
+
+            console.debug(`[Scripts] Compiled script for function ${i} (${scriptKey})`)
+          } catch (error) {
+            console.error(`[Scripts] Failed to compile script for function ${i} (${scriptKey}):`, error)
+            setMessage(`Failed to compile script for function ${i}: ${(error as Error).message}`, true)
+            return
+          }
+        } else {
+          // Find the corresponding function in state.functions to check for modifications
+          const stateFunc = state.functions.find(sf => getScriptKey(sf) === scriptKey)
+          if (stateFunc && stateFunc.script !== func.script) {
+            // If the script text has been directly modified, update it
+            evFile.setFunctionScript(i, stateFunc.script)
+            console.debug(`[Scripts] Updated script for function ${i} (${scriptKey})`)
+          }
+        }
+      }
+
+      // Generate the binary .ev file data
+      const evData = evFile.writeFile()
+
+      // Save the .ev file back to the LGP archive
+      const filename = state.selectedMap.toLowerCase() + '.ev'
+      await setFile(filename, evData)
+
+      console.timeEnd("[Scripts] Saving scripts")
+      setMessage("Scripts saved successfully!")
+
+    } catch (error) {
+      console.error("Error saving scripts:", error)
+      setMessage("Failed to save scripts: " + (error as Error).message, true)
+    }
+  }
+
   return {
     functions: state.functions,
     selectedMap: state.selectedMap,
@@ -201,6 +318,9 @@ export function useScriptsState() {
     ev: state.ev,
     decompiled: state.decompiled,
     loadScripts,
+    saveScripts,
+    addModelScript,
+    addMeshScript,
     setSelectedMap,
     setScriptType,
     selectScript,

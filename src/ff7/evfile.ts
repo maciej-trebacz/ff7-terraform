@@ -291,6 +291,60 @@ export class EvFile {
         this.functions[index].script = script;
     }
 
+    addModelFunction(modelId: number, functionId: number): FF7Function {
+        // Check if function already exists
+        const existingFunction = this.functions.find(fn =>
+            fn.type === FunctionType.Model &&
+            (fn as ModelFunction).modelId === modelId &&
+            fn.id === functionId
+        );
+
+        if (existingFunction) {
+            throw new Error(`Model function ${modelId}:${functionId} already exists`);
+        }
+
+        // Create new model function with just a RETURN opcode
+        const newFunction: ModelFunction = {
+            type: FunctionType.Model,
+            id: functionId,
+            modelId: modelId,
+            header: this.calculateHeader({ type: FunctionType.Model, id: functionId, modelId } as ModelFunction),
+            offset: 0, // Will be calculated during writeFile
+            script: "RETURN"
+        };
+
+        this.functions.push(newFunction);
+        return newFunction;
+    }
+
+    addMeshFunction(x: number, y: number, functionId: number): FF7Function {
+        // Check if function already exists
+        const existingFunction = this.functions.find(fn =>
+            fn.type === FunctionType.Mesh &&
+            (fn as MeshFunction).x === x &&
+            (fn as MeshFunction).y === y &&
+            fn.id === functionId
+        );
+
+        if (existingFunction) {
+            throw new Error(`Mesh function ${x},${y}:${functionId} already exists`);
+        }
+
+        // Create new mesh function with just a RETURN opcode
+        const newFunction: MeshFunction = {
+            type: FunctionType.Mesh,
+            id: functionId,
+            x: x,
+            y: y,
+            header: this.calculateHeader({ type: FunctionType.Mesh, id: functionId, x, y } as MeshFunction),
+            offset: 0, // Will be calculated during writeFile
+            script: "RETURN"
+        };
+
+        this.functions.push(newFunction);
+        return newFunction;
+    }
+
     writeFile() {
         const out = new Uint8Array(0x7000);
         const view = new DataView(out.buffer);

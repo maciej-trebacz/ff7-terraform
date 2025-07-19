@@ -128,3 +128,23 @@ export const enumMaps: Record<string, { namespace: string, mapping: Record<numbe
     mapping: modelsMapping
   },
 };
+
+// System script short names - common function IDs with readable names
+export const systemScriptNames: Record<number, string> = {
+  0: 'init',
+  // 1: 'unload',  // this seems to be exit but testing didn't confirm that
+  2: 'update',
+  6: 'highwind_menu',
+  7: 'zolom_touched',
+  9: 'crater_landing',
+};
+
+// Model script short names - common function IDs with readable names  
+export const modelScriptNames: Record<number, string> = {
+  0: 'init',
+  1: 'unload',
+  2: 'update',
+  3: 'touch',
+  4: 'interact',
+  5: 'disembark',
+};

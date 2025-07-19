@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MapId } from '@/hooks/useMapState';
 import { useScriptsState } from '@/hooks/useScriptState';
 import { FunctionType } from '@/ff7/evfile';
+import { useState } from 'react';
+import { AddScriptModal } from '@/components/modals/AddScriptModal';
 
 const MAP_NAMES: Record<MapId, string> = {
   WM0: 'Overworld',
@@ -14,7 +16,8 @@ const MAP_NAMES: Record<MapId, string> = {
 };
 
 export function ScriptControls() {
-  const { selectedMap, scriptType, setSelectedMap, setScriptType, loadScripts } = useScriptsState();
+  const { selectedMap, scriptType, setSelectedMap, setScriptType, loadScripts, addModelScript, addMeshScript } = useScriptsState();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handleMapChange = (value: MapId) => {
     setSelectedMap(value);
@@ -24,6 +27,20 @@ export function ScriptControls() {
   const handleScriptTypeChange = (value: string) => {
     setScriptType(Number(value) as FunctionType);
   };
+
+  const handleAddScript = async (params: any) => {
+    try {
+      if (params.type === 'model') {
+        await addModelScript(params.modelId, params.functionId);
+      } else if (params.type === 'mesh') {
+        await addMeshScript(params.x, params.y, params.functionId);
+      }
+    } catch (error) {
+      // Error is already handled in the hook
+    }
+  };
+
+  const canAddScripts = scriptType === FunctionType.Model || scriptType === FunctionType.Mesh;
 
   return (
     <div className="w-full bg-sidebar border-b border-slate-800/40 flex items-center justify-between gap-2 px-2 py-1">
@@ -37,6 +54,8 @@ export function ScriptControls() {
                   variant="outline"
                   size="icon"
                   className="h-6 w-6"
+                  onClick={() => setIsAddModalOpen(true)}
+                  disabled={!canAddScripts}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
@@ -109,6 +128,13 @@ export function ScriptControls() {
           />
         </div>
       </div>
+
+      <AddScriptModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        scriptType={scriptType}
+        onAddScript={handleAddScript}
+      />
     </div>
   );
-} 
+}

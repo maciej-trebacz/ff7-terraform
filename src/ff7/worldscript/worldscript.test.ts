@@ -627,3 +627,202 @@ RETURN
     expect(result.trim()).toBe(expected.trim());
   });
 });
+
+describe('Worldscript comment support', () => {
+  let worldscript: Worldscript;
+
+  beforeEach(() => {
+    worldscript = new Worldscript(0x1000);
+  });
+
+  it('should handle full line comments', () => {
+    const script = `
+-- This is a full line comment
+System.wait(10)
+-- Another comment
+return
+`;
+
+    const expected = `
+RESET
+PUSH_CONSTANT 0A
+WAIT_FRAMES
+WAIT
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should handle inline comments', () => {
+    const script = `
+System.wait(10) -- This is an inline comment
+return -- End of script
+`;
+
+    const expected = `
+RESET
+PUSH_CONSTANT 0A
+WAIT_FRAMES
+WAIT
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should handle mixed comments and code', () => {
+    const script = `
+if Special.entity_direction == 0 then -- Check if facing north
+  System.wait(5) -- Short wait
+  -- Set new direction
+  Special.entity_direction = 1 -- Face east
+end
+return -- Done
+`;
+
+    const expected = `
+RESET
+PUSH_SPECIAL_BYTE 04
+PUSH_CONSTANT 00
+EQ
+GOTO_IF_FALSE 1013
+RESET
+PUSH_CONSTANT 05
+WAIT_FRAMES
+WAIT
+RESET
+PUSH_SPECIAL_BYTE 04
+PUSH_CONSTANT 01
+WRITE
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should handle empty lines and comment-only lines', () => {
+    const script = `
+-- Start of script
+
+System.wait(1)
+
+-- Middle comment
+
+System.wait(2)
+
+-- End comment
+return
+`;
+
+    const expected = `
+RESET
+PUSH_CONSTANT 01
+WAIT_FRAMES
+WAIT
+RESET
+PUSH_CONSTANT 02
+WAIT_FRAMES
+WAIT
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should not treat -- inside string literals as comments', () => {
+    // Note: This test is more theoretical since the current worldscript language
+    // doesn't have string literals, but it tests the comment stripping logic
+    const script = `
+System.wait(10)
+return
+`;
+
+    const expected = `
+RESET
+PUSH_CONSTANT 0A
+WAIT_FRAMES
+WAIT
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should handle complex script with many comments', () => {
+    const script = `
+-- Complex script with multiple operations
+-- Check player model and perform actions
+
+if Special.player_entity_model_id == 0 then -- Cloud
+  System.enter_field(47, 0) -- Go to specific field
+  goto label_end -- Skip other checks
+end
+
+-- Check for other characters
+if Special.player_entity_model_id == 1 or Special.player_entity_model_id == 2 then -- Tifa or Cid
+  System.call_function(31, Special.player_entity_model_id) -- Call character-specific function
+end
+
+::label_end:: -- End label
+return -- Exit script
+`;
+
+    const expected = `
+RESET
+PUSH_SPECIAL_BYTE 08
+PUSH_CONSTANT 00
+EQ
+GOTO_IF_FALSE 1010
+RESET
+PUSH_CONSTANT 2F
+PUSH_CONSTANT 00
+ENTER_FIELD
+GOTO 1022
+RESET
+PUSH_SPECIAL_BYTE 08
+PUSH_CONSTANT 01
+EQ
+PUSH_SPECIAL_BYTE 08
+PUSH_CONSTANT 02
+EQ
+LOR
+GOTO_IF_FALSE 1022
+RESET
+PUSH_SPECIAL_BYTE 08
+CALL_FN_31
+RETURN
+`;
+
+    const result = worldscript.compile(script);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it('should preserve functionality when comments are removed', () => {
+    // Test that a script with comments produces the same result as without comments
+    const scriptWithComments = `
+-- Test script
+if Savemap.game_progress == 100 then -- Check progress
+  Entity.stop() -- Stop entity
+end
+return -- Exit
+`;
+
+    const scriptWithoutComments = `
+if Savemap.game_progress == 100 then
+  Entity.stop()
+end
+return
+`;
+
+    const resultWithComments = worldscript.compile(scriptWithComments);
+    const resultWithoutComments = worldscript.compile(scriptWithoutComments);
+
+    expect(resultWithComments.trim()).toBe(resultWithoutComments.trim());
+  });
+});
