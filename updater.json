@@ -1,10 +1,10 @@
 {
-  "version": "0.6.0",
-  "pub_date": "2025-02-21T21:00:00+00:00",
+  "version": "0.7.0",
+  "pub_date": "2025-07-19T21:00:00+00:00",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290Tnp3bTE5Y1dnWnMvMUpJQUN1N09lOGVpUmdHbkwwZGJCL21OeXVGcVZsWUI0cW52KzNrZWtDd3p3MUg5VE16K1IzYzBjM0ZOUElLcFRmUWNzRUdZekFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzQwMTYwNTY1CWZpbGU6RkY3IFRlcnJhZm9ybV8wLjYuMF94NjQtc2V0dXAuZXhlCjRQY3RZd1h1elRQUHFYNlV3QkVGZzF0cEQ3QjRoU3NPRXRzM3U1Q1BoM2NLUG9RbjJxM0lsVVBrL2h0bnNyOFJaMVplNHoyUUpoZXE5N3dCcTVOY0J3PT0K",
-      "url": "https://github.com/maciej-trebacz/ff7-terraform/releases/download/0.6.0/FF7.Terraform_0.6.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290TjltaFRWcVI5RWtlMXFEUmd5bjRsSExCa0NlRjhVdHk2QTcvbFBma2xwWEpydm4wZjZzQy9YU1FmNkRhSmdseFB2SlpGK01xZzZOTFJYWTlGTWd4Z0FRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzUyOTA5MTg3CWZpbGU6RkY3IExhbmRzY2FwZXJfMC43LjBfeDY0LXNldHVwLmV4ZQpaenRFdmRXYzZremk2S3VnakVSbmNlZjdoQkdFZHIzV1dpbFpNMDc1eXFaaTdYQnA1Wm45M2ViNnprWVpVZXZpYVpmNnFyUHprdkRqdXdkS3hBMVpBQT09Cg",
+      "url": "https://github.com/maciej-trebacz/ff7-terraform/releases/download/0.7.0/FF7.Landscaper_0.7.0_x64-setup.exe"
     }
   }
 }

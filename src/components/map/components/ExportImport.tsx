@@ -94,7 +94,6 @@ export function ExportImport() {
     const normals: Array<{ x: number, y: number, z: number }> = []; // Final vertex-mapped normals
     const texCoords: Array<{ u: number, v: number }> = [];
     const triangles: any[] = [];
-    const triangleVertices: Array<{ v0Idx: number, v1Idx: number, v2Idx: number }> = []; // Store vertex indices for triangles
 
     // Store normal indices per vertex for later processing
     const vertexToNormalIdx: number[] = [];

@@ -1,13 +1,13 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { useTextureAtlas } from './hooks';
 import { useGeometry } from './hooks';
 import { useSelectedTriangleGeometry } from './hooks';
-import { RenderingMode, TriangleWithVertices } from '../../types';
+import { RenderingMode } from '../../types';
 import { Triangle } from '@/ff7/mapfile';
 import { MapMode, useMapState } from '@/hooks/useMapState';
-import { MESH_SIZE, SCALE } from '../../constants';
+import { MESH_SIZE } from '../../constants';
 import { GridOverlay } from '../GridOverlay';
 import { SELECTION_Y_OFFSET } from '../../constants';
 

@@ -4,8 +4,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { FF7Function, FunctionType } from "@/ff7/evfile"
-import { ArrowRight, Code, FileCode } from "lucide-react"
+import { FunctionType } from "@/ff7/evfile"
+import { ArrowRight } from "lucide-react"
 import { OpcodesEditor } from "@/components/script/OpcodesEditor"
 import { WorldscriptEditor } from "@/components/script/WorldscriptEditor"
 import { useEffect, useState } from "react"
@@ -24,7 +24,6 @@ export function ScriptEditor({ className, decompiled = false }: ScriptEditorProp
     updateSelectedScript, 
     selectScript, 
     setScriptType, 
-    ev, 
     decompiled: globalDecompiled,
     setDecompiledMode,
     getDecompiledScript,
@@ -99,15 +98,7 @@ export function ScriptEditor({ className, decompiled = false }: ScriptEditorProp
     }
   }
 
-  const handleTestScript = () => {
-    if (!ev || !scriptToEdit) return;
-    try {
-      const bytes = ev.encodeOpcodes(scriptToEdit.script);
-      console.log("Encoded opcodes:", Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' '));
-    } catch (error) {
-      console.error("Failed to encode script:", error);
-    }
-  }
+
 
   const handleDecompiledChange = (checked: boolean) => {
     setDecompiledMode(checked)

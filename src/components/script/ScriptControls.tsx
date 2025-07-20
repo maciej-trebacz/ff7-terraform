@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Save, Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapId } from '@/hooks/useMapState';

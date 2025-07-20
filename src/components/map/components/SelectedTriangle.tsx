@@ -2,12 +2,6 @@ import { Triangle } from "@/ff7/mapfile";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { TRIANGLE_TYPES } from "@/lib/map-data";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { UVEditor } from "@/components/map/components/UVEditor";
 import { useMessagesState } from "@/hooks/useMessagesState";
 import { useMapState } from "@/hooks/useMapState";
