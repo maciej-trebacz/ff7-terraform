@@ -5,7 +5,7 @@ const text = new Parser().string('', {greedy: true});
 
 const ffText = new Parser()
     .wrapped('', {
-        wrapper: (buffer: Buffer) => Buffer.from(decodeText(new Uint8Array(buffer))),
+        wrapper: decodeText,
         type: text,
         readUntil: function(byte: number) {
             return byte === 0xFF;

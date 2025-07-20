@@ -1036,6 +1036,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ff7-landscaper"
+version = "0.7.1"
+dependencies = [
+ "ff7-lib",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-updater",
+]
+
+[[package]]
 name = "ff7-lib"
 version = "1.4.5"
 dependencies = [
@@ -1050,21 +1065,6 @@ dependencies = [
  "sysinfo",
  "thiserror 1.0.69",
  "winapi",
-]
-
-[[package]]
-name = "ff7-terraform"
-version = "0.7.0"
-dependencies = [
- "ff7-lib",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-updater",
 ]
 
 [[package]]

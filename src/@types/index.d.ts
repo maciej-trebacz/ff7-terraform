@@ -20,7 +20,7 @@ declare module "binary-parser" {
         key?: string;
         tag?: string | ((item: any) => number);
         offset?: number | string | ((item: any) => number);
-        wrapper?: (buffer: Buffer) => Buffer;
+        wrapper?: (buffer: Uint8Array) => Uint8Array;
     }
     declare type Types = PrimitiveTypes | ComplexTypes;
     declare type ComplexTypes = "bit" | "string" | "buffer" | "array" | "choice" | "nest" | "seek" | "pointer" | "saveOffset" | "wrapper" | "";

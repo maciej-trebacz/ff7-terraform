@@ -1,6 +1,6 @@
 [package]
-name = "ff7-terraform"
-version = "0.7.0"
+name = "ff7-landscaper"
+version = "0.7.1"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
