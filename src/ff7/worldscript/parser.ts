@@ -89,7 +89,7 @@ export class Parser {
   }
 
   private parseExpression(): Expression {
-    return this.parseUnaryExpression();
+    return this.parseBinaryExpression(0);
   }
 
   private parseUnaryExpression(): Expression {
@@ -102,12 +102,12 @@ export class Parser {
       return { type: 'Unary', operator, operand };
     }
     
-    // If no unary operator, parse as a binary expression
-    return this.parseBinaryExpression(0);
+    // If no unary operator, parse a member/call expression.
+    return this.parseMemberOrCall();
   }
 
   private parseBinaryExpression(minPrecedence: number): Expression {
-    let left = this.parseMemberOrCall();
+    let left = this.parseUnaryExpression();
     while (true) {
       const operatorToken = this.peek();
       if (!operatorToken || operatorToken.type !== 'operator') break;

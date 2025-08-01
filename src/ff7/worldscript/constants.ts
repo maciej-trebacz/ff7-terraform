@@ -54,6 +54,7 @@ export const modelsMapping: Record<string, string> = {
 export const modelMnemonics = [Mnemonic.DIST_MODEL, Mnemonic.LOAD_MODEL, Mnemonic.SET_ENTITY, Mnemonic.FACE_MODEL, Mnemonic.MOVE_TO_MODEL];
 export const modelOpcodes = modelMnemonics.map(mnemonic => Object.entries(Opcodes).find(([_, opcode]) => opcode.mnemonic === mnemonic)?.[1]);
 
+// TODO: These might contain errors, need to check
 export const fieldsMapping: Record<string, string> = {
   0: 'other_worldmap',
   1: 'midgar_sector_5_gate',
@@ -95,21 +96,21 @@ export const fieldsMapping: Record<string, string> = {
   37: 'costa_del_sol_harbor',
   38: 'costa_del_sol_harbor_2',
   39: 'junon_dock',
-  40: 'tiny_bronco_crash',
-  41: 'highwind_bridge',
-  42: 'submarine_bridge',
+  40: 'unused_40',
+  41: 'unused_41',
+  42: 'unused_42',
   43: 'nibelheim_north',
   44: 'mt_nibel_from_rocket_town',
-  45: 'highwind_bridge_2',
+  45: 'unused_45',
   46: 'mt_nibel_from_nibelheim',
   47: 'icicle_village_north',
   48: 'great_glacier',
-  49: 'rocket_town_north',
+  49: 'unused_49',
   50: 'highwind_bridge_3',
   51: 'highwind_bridge_4',
   52: 'highwind_bridge_5',
   53: 'diamond_weapon_encounter',
-  54: 'submarine_bridge_2',
+  54: 'unused_54',
   55: 'ancient_forest',
   56: 'submarine_bridge_3',
   57: 'corral_valley',

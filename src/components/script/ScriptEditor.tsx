@@ -100,8 +100,39 @@ export function ScriptEditor({ className, decompiled = false }: ScriptEditorProp
 
 
 
-  const handleDecompiledChange = (checked: boolean) => {
-    setDecompiledMode(checked)
+  const handleDecompiledChange = async (checked: boolean) => {
+    if (!scriptToEdit) {
+      setDecompiledMode(checked)
+      return
+    }
+
+    try {
+      setIsDecompiling(true)
+      
+      if (checked) {
+        // Switching from raw to decompiled mode
+        // Decompile the current raw script
+        const worldscript = new Worldscript(scriptToEdit.offset, false)
+        const decompiled = worldscript.decompile(scriptToEdit.script, true)
+        updateDecompiledScript(scriptToEdit, decompiled)
+      } else {
+        // Switching from decompiled to raw mode
+        // Compile the current decompiled script back to opcodes
+        const currentDecompiled = getDecompiledScript(scriptToEdit)
+        if (currentDecompiled) {
+          const worldscript = new Worldscript(scriptToEdit.offset, false)
+          const compiled = worldscript.compile(currentDecompiled)
+          updateSelectedScript({ script: compiled })
+        }
+      }
+      
+      setDecompiledMode(checked)
+    } catch (error) {
+      console.error("Failed to convert script:", error)
+      // Don't switch modes if conversion failed
+    } finally {
+      setIsDecompiling(false)
+    }
   }
 
   const handleScriptChange = (value: string) => {

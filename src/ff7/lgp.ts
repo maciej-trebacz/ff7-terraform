@@ -177,17 +177,31 @@ export class LGP {
 
     setFile(name: string, data: Uint8Array) {
         const entry = this.archive.toc.find(item => item.filename === name);
-        if (!entry) return false;
-
+        if (!entry) return false; 
+        entry.filesize = data.length; 
         this.modified[name] = data;
+        return true;
     }
 
     writeArchive(): ArrayBuffer {
-        // Allocate a buffer for the entire LGP archive
-        const out = new ArrayBuffer(this.getSize());
+        // The offset where the first file's data block will start
+        let currentDataOffset = this.getDataOffset();
+
+        // Loop through the TOC to assign the final offset to each file
+        // and update the total size with the *new* file sizes.
+        this.archive.toc.forEach(entry => {
+            // If a file was modified, its size may have changed.
+            // The filesize is already updated by our fixed setFile method.
+            entry.newOffset = currentDataOffset;
+            currentDataOffset += 24 + entry.filesize; // 24 bytes for file header (name + size)
+        });
+
+        // The final total size of the archive
+        const totalSize = currentDataOffset + DEFAULT_TERMINATOR.length;
+
+        const out = new ArrayBuffer(totalSize);
         const view = new DataView(out);
         const encoder = new TextEncoder();
-
         let pos = 0;
 
         // Write creator
@@ -198,46 +212,47 @@ export class LGP {
         view.setUint32(pos, this.archive.toc.length, true);
         pos += 4;
 
-        let dataOffset = this.getDataOffset();
-
-        // Write TOC entries
+        // Write main TOC entries using the 'newOffset' we calculated
         this.archive.toc.forEach(entry => {
-            entry.newOffset = dataOffset;
             encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, pos, 20));
             pos += 20;
-            view.setUint32(pos, dataOffset, true);
+            view.setUint32(pos, entry.newOffset, true); // Use the calculated offset
             pos += 4;
             view.setUint8(pos, entry.check);
             pos += 1;
             view.setUint16(pos, entry.conflictIndex, true);
             pos += 2;
-            dataOffset += entry.filesize + 24;
         });
 
         // Write Lookup table entries
         const lookupTable = this.getTOC();
-        lookupTable.forEach(({tocIndex, fileCount}) => {
+        lookupTable.forEach(({ tocIndex, fileCount }) => {
             view.setUint16(pos, tocIndex, true);
             pos += 2;
             view.setUint16(pos, fileCount, true);
             pos += 2;
         });
+        
+        // TODO: Write conflicts
 
-        // Write file data
-        pos = this.getDataOffset();
+        // --- Write the actual file data blocks ---
         this.archive.toc.forEach((entry) => {
-            encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, entry.newOffset, 20));
-            pos += 20;
-            view.setUint32(pos, entry.filesize, true);
-            pos += 4;
+            let currentFilePos = entry.newOffset;
             const data = this.getFile(entry.filename);
             if (!data) throw Error("Data not found for file: " + entry.filename);
-            new Uint8Array(out, pos, entry.filesize).set(data);
-            pos += entry.filesize;
+
+            // Write the per-file header AT the start of its data block
+            encoder.encodeInto(entry.filename.padEnd(20, '\0'), new Uint8Array(out, currentFilePos, 20));
+            currentFilePos += 20;
+            view.setUint32(currentFilePos, entry.filesize, true);
+            currentFilePos += 4;
+            
+            // Now, set the file contents. 'data.length' will now match 'entry.filesize'.
+            new Uint8Array(out, currentFilePos, entry.filesize).set(data);
         });
 
-        // Write terminator
-        encoder.encodeInto(DEFAULT_TERMINATOR, new Uint8Array(out, pos));
+        // Write terminator at the very end of the file
+        encoder.encodeInto(DEFAULT_TERMINATOR, new Uint8Array(out, currentDataOffset));
 
         return out;
     }
