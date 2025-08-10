@@ -16,6 +16,7 @@ import {
 import { useLgpState } from "@/hooks/useLgpState"
 import { useMapState } from "@/hooks/useMapState"
 import { useScriptsState } from "@/hooks/useScriptState"
+import { useLocationsState } from "@/hooks/useLocationsState"
 
 export function Navbar() {
   const { setMessage } = useStatusBar()
@@ -23,6 +24,7 @@ export function Navbar() {
   const { saveMessages } = useMessagesState()
   const { saveMap } = useMapState()
   const { saveScripts } = useScriptsState()
+  const { saveLocations } = useLocationsState()
   const { loadLgp, opened } = useLgpState() 
 
   const clearFocus = () => {
@@ -62,6 +64,7 @@ export function Navbar() {
       await saveMessages()
       await saveMap()
       await saveScripts()
+      await saveLocations()
     } catch (error) {
       showAlert("Error", (error as Error).message)
     }
@@ -134,6 +137,7 @@ export function Navbar() {
           <TabsTrigger value="messages" disabled={!opened}>Messages</TabsTrigger>
           <TabsTrigger value="map" disabled={!opened}>Map</TabsTrigger>
           <TabsTrigger value="textures" disabled={!opened}>Textures</TabsTrigger>
+          <TabsTrigger value="locations" disabled={!opened}>Locations</TabsTrigger>
           <ComingSoonTab value="encounters">Encounters</ComingSoonTab>
           <TabsTrigger value="scripts" disabled={!opened}>Scripts</TabsTrigger>
         </TabsList>

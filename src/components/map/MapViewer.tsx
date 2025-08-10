@@ -129,8 +129,7 @@ function MapViewer({
       position,
       fov:    60,
       near:   0.1,
-      far:    1000000,
-      up:     [0, 0, -1] as [number, number, number]
+      far:    1000000
     };
   }, [mapDimensions, mapType]);
 
@@ -255,7 +254,6 @@ function MapViewer({
     ] as [number, number, number],
     near: -1000,
     far: 100000,
-    up: [0, 0, -1] as [number, number, number],
     zoom: 1
   }), [mapDimensions, mapType]);
 

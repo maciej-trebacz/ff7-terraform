@@ -1,8 +1,8 @@
 import {Parser} from 'binary-parser';
 
 const fieldEntryInfo = new Parser()
-    .uint16le('x')
-    .uint16le('y')
+    .int16le('x')
+    .int16le('y')
     .uint16le('triangle')
     .uint16le('fieldId')
     .uint8('direction')
@@ -27,12 +27,12 @@ export class FieldTblFile {
 
     getEntry(id: number) {
         if (id < 1 || id > 64) throw Error('ID must be in the range of 1–64.')
-        return this.data[id - 1];
+        return this.data.entries[id - 1];
     }
 
     setEntry(id: number, data: any) {
         if (id < 1 || id > 64) throw Error('ID must be in the range of 1–64.')
-        this.data[id - 1] = data;
+        this.data.entries[id - 1] = data;
     }
 
     writeFile() {
@@ -40,8 +40,8 @@ export class FieldTblFile {
         const view = new DataView(out.buffer);
 
         function writeEntry(view: DataView, offset: number, entry: any) {
-            view.setUint16(offset, entry.x, true);
-            view.setUint16(offset + 2, entry.y, true);
+            view.setInt16(offset, entry.x, true);
+            view.setInt16(offset + 2, entry.y, true);
             view.setUint16(offset + 4, entry.triangle, true);
             view.setUint16(offset + 6, entry.fieldId, true);
             view.setUint8(offset + 8, entry.direction);
@@ -51,7 +51,7 @@ export class FieldTblFile {
         }
 
         for (let i = 0; i < 64; i++) {
-            const entry = this.data[i];
+            const entry = this.data.entries[i];
             writeEntry(view, i * 24, entry.default);
             writeEntry(view, i * 24 + 12, entry.alternative);
         }

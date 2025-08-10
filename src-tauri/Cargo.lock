@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "ff7-landscaper"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "ff7-lib",
  "serde",
@@ -1052,7 +1052,7 @@ dependencies = [
 
 [[package]]
 name = "ff7-lib"
-version = "1.6.0"
+version = "1.7.0"
 dependencies = [
  "byteorder",
  "flate2",

@@ -338,7 +338,7 @@ export function useMapState() {
 
   const updateSingleTriangle = (updates: TriangleUpdates) => {
     setState(prev => {
-      if (!prev.worldmap || !prev.triangleMap || !prev.selectedTriangle) return prev;
+      if (!prev.worldmap || !prev.triangleMap || prev.selectedTriangle === null) return prev;
 
       const triangle = prev.triangleMap[prev.selectedTriangle];
       if (!triangle) {

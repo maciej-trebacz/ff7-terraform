@@ -4,6 +4,7 @@ import { MessagesTab } from "./MessagesTab"
 import { EncountersTab } from "./EncountersTab"
 import { ScriptsTab } from "./ScriptsTab"
 import { TexturesTab } from "./TexturesTab"
+import { LocationsTab } from "./LocationsTab"
 import { useLgpState } from "@/hooks/useLgpState"
 
 export function TabContent() {
@@ -33,6 +34,9 @@ export function TabContent() {
       </TabsContent>
       <TabsContent value="textures" className="flex-1 data-[state=active]:flex overflow-y-auto">
         <TexturesTab />
+      </TabsContent>
+      <TabsContent value="locations" className="flex-1 data-[state=active]:flex min-h-0">
+        <LocationsTab />
       </TabsContent>
     </div>
   )
