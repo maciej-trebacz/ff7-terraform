@@ -50,6 +50,27 @@ export const modelsMapping: Record<string, string> = {
   65535: 'system'
 };
 
+// Variables available under the Special namespace
+export const SPECIAL_MAP: { [key: number]: { name: string; type: 'byte' | 'word' | 'bit' } } = {
+  0: { name: 'entity_mesh_x_coord', type: 'byte' },
+  1: { name: 'entity_mesh_y_coord', type: 'byte' },
+  2: { name: 'entity_coord_in_mesh_x', type: 'word' },
+  3: { name: 'entity_coord_in_mesh_y', type: 'word' },
+  4: { name: 'entity_direction', type: 'byte' },
+  5: { name: 'unknown_5', type: 'byte' },
+  6: { name: 'last_field_id', type: 'byte' },
+  7: { name: 'map_options', type: 'byte' },
+  8: { name: 'player_entity_model_id', type: 'byte' },
+  9: { name: 'current_entity_model_id', type: 'byte' },
+  10: { name: 'check_if_riding_chocobo', type: 'byte' },
+  11: { name: 'battle_result', type: 'bit' },
+  12: { name: 'prompt_window_result', type: 'byte' },
+  13: { name: 'current_triangle_script_id', type: 'byte' },
+  14: { name: 'party_leader_model_id', type: 'byte' },
+  15: { name: 'unknown_15', type: 'byte' },
+  16: { name: 'random_8bit_number', type: 'byte' },
+};
+
 // Opcode IDs for model-related opcodes
 export const modelMnemonics = [Mnemonic.DIST_MODEL, Mnemonic.LOAD_MODEL, Mnemonic.SET_ENTITY, Mnemonic.FACE_MODEL, Mnemonic.MOVE_TO_MODEL];
 export const modelOpcodes = modelMnemonics.map(mnemonic => Object.entries(Opcodes).find(([_, opcode]) => opcode.mnemonic === mnemonic)?.[1]);

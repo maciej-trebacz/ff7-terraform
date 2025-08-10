@@ -1,7 +1,8 @@
 import { OpcodeDefinition, Opcodes, Mnemonic, Namespace } from "./opcodes";
 import { AssignmentStatement, BinaryExpression, BlockStatement, Expression, ExpressionStatement, FunctionCallExpression, GotoStatement, IdentifierExpression, IfStatement, IndexExpression, Instruction, LabelStatement, LiteralExpression, MemberExpression, Statement, Token, UnaryExpression } from "./types";
 import { Parser } from "./parser";
-import { modelsMapping, fieldsMapping, savemapMapping, modelOpcodes, enumMaps } from "./constants";
+import { modelsMapping, fieldsMapping, savemapMapping, modelOpcodes, enumMaps, SPECIAL_MAP } from "./constants";
+
 
 export class Worldscript {
   private startingOffset: number;
@@ -33,25 +34,7 @@ export class Worldscript {
   };  
 
   // Mapping from value to name and type for decompilation
-  private specialMap: { [key: number]: { name: string; type: 'byte' | 'word' | 'bit' } } = {
-    0: { name: 'entity_mesh_x_coord', type: 'byte' },
-    1: { name: 'entity_mesh_y_coord', type: 'byte' },
-    2: { name: 'entity_coord_in_mesh_x', type: 'word' },
-    3: { name: 'entity_coord_in_mesh_y', type: 'word' },
-    4: { name: 'entity_direction', type: 'byte' },
-    5: { name: 'unknown_5', type: 'byte' },
-    6: { name: 'last_field_id', type: 'byte' },
-    7: { name: 'map_options', type: 'byte' },
-    8: { name: 'player_entity_model_id', type: 'byte' },
-    9: { name: 'current_entity_model_id', type: 'byte' },
-    10: { name: 'check_if_riding_chocobo', type: 'byte' },
-    11: { name: 'battle_result', type: 'bit' },
-    12: { name: 'prompt_window_result', type: 'byte' },
-    13: { name: 'current_triangle_script_id', type: 'byte' },
-    14: { name: 'party_leader_model_id', type: 'byte' },
-    15: { name: 'unknown_15', type: 'byte' },
-    16: { name: 'random_8bit_number', type: 'byte' },
-  };
+  private specialMap: { [key: number]: { name: string; type: 'byte' | 'word' | 'bit' } } = SPECIAL_MAP;
 
   // Mapping from name to value and type for compilation
   private specialVariables: Record<string, { value: number; type: 'byte' | 'word' | 'bit' }> = {};  
