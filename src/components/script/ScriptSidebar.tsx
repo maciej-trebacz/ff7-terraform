@@ -47,8 +47,8 @@ const customUiRegistry: Record<string, CustomRenderer> = {
   'Entity.set_movement_direction': (ctx, onBatch) => directionRadial(ctx, onBatch, 0, { label: 'Direction' }),
   'Entity.set_mesh_coords': (ctx, onBatch) => <SetMeshCoordsUI ctx={ctx} onBatch={onBatch} scope="Entity" />,
   'Point.set_mesh_coords': (ctx, onBatch) => <SetMeshCoordsUI ctx={ctx} onBatch={onBatch} scope="Point" />,
-  'Entity.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} scope="Entity" />,
-  'Point.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} scope="Point" />,
+  'Entity.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} />,
+  'Point.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} />,
 };
 
 function colorTriple(ctx: CallContext, onBatch: (updates: Array<{ index: number; newText: string }>) => void) {
@@ -645,7 +645,7 @@ function SetMeshCoordsUI({ ctx, onBatch, scope }: { ctx: CallContext; onBatch: (
   )
 }
 
-function SetCoordsInMeshUI({ ctx, onBatch, scope }: { ctx: CallContext; onBatch: (updates: Array<{ index: number; newText: string }>) => void, scope: 'Entity' | 'Point' }) {
+function SetCoordsInMeshUI({ ctx, onBatch }: { ctx: CallContext; onBatch: (updates: Array<{ index: number; newText: string }>) => void }) {
   const SIZE = 320
   const MAX = 8191
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
