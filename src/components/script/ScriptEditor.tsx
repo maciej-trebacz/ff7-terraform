@@ -7,17 +7,20 @@ import { Button } from "@/components/ui/button"
 import { FunctionType } from "@/ff7/evfile"
 import { ArrowRight } from "lucide-react"
 import { OpcodesEditor } from "@/components/script/OpcodesEditor"
-import { WorldscriptEditor } from "@/components/script/WorldscriptEditor"
-import { useEffect, useState } from "react"
+import { WorldscriptEditor, type CallContext, type WorldscriptEditorHandle } from "@/components/script/WorldscriptEditor"
+import { useEffect, useRef, useState } from "react"
 import { Worldscript } from "@/ff7/worldscript/worldscript"
 import { Switch } from "@/components/ui/switch"
+
 
 interface ScriptEditorProps {
   className?: string
   decompiled?: boolean
+  editorHandleRef?: React.Ref<WorldscriptEditorHandle>
+  onWorldscriptContextChange?: (ctx: CallContext | null) => void
 }
 
-export function ScriptEditor({ className, decompiled = false }: ScriptEditorProps) {
+export function ScriptEditor({ className, decompiled = false, editorHandleRef, onWorldscriptContextChange }: ScriptEditorProps) {
   const { 
     functions, 
     getSelectedScript, 
@@ -33,6 +36,7 @@ export function ScriptEditor({ className, decompiled = false }: ScriptEditorProp
 
   const [isDecompiling, setIsDecompiling] = useState(false)
   const effectiveDecompiled = decompiled || globalDecompiled
+  const localEditorHandleRef = useRef<WorldscriptEditorHandle | null>(null)
 
   const scriptToEdit = getSelectedScript()
   const systemFunctions = functions.filter(f => f.type === FunctionType.System)
@@ -235,6 +239,9 @@ export function ScriptEditor({ className, decompiled = false }: ScriptEditorProp
                 key={`decompiled-${getScriptKey(scriptToEdit)}`} // Force remount when script changes
                 value={decompiledContent}
                 onChange={handleScriptChange}
+                onContextChange={onWorldscriptContextChange}
+                showDetails={false}
+                ref={(editorHandleRef ?? localEditorHandleRef) as any}
                 className="h-full"
               />
             </div>

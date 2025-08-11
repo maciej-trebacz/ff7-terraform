@@ -1,3 +1,8 @@
+export type ParamType =
+  | { kind: 'boolean' }
+  | { kind: 'number'; min?: number; max?: number; step?: number }
+  | { kind: 'enum'; options: Array<{ value: number | string; label: string }> };
+
 export type OpcodeDefinition = {
   name: string;
   stackParams: number;
@@ -7,7 +12,7 @@ export type OpcodeDefinition = {
   description: string;
   pushesResult?: boolean;
   // Detailed parameter documentation sourced from ffrtt wiki
-  stackParamsDef?: Array<{ name: string; description: string }>;
+  stackParamsDef?: Array<{ name: string; description: string; type?: ParamType }>;
   codeParamsDef?: Array<{ name: string; description: string }>;
   // Additional behavior/usage notes sourced from ffrtt wiki
   notes?: string;
@@ -672,7 +677,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Lock/unlock player controls",
     stackParamsDef: [
-      { name: "Control lock", description: "Boolean value (0 disable, 1 enable)" },
+      { name: "Control lock", description: "Boolean value (0 disable, 1 enable)", type: { kind: 'boolean' } },
     ],
     notes: "Locks/unlocks player controls. Enabling may restore camera (needs verification).",
   },
@@ -1153,7 +1158,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Entity,
     description: "Set entity walking speed",
     stackParamsDef: [
-      { name: "Speed", description: "0-255" },
+      { name: "Speed", description: "0-255", type: { kind: 'number', min: 0, max: 255 } },
     ],
     notes: "Sets active entity movement speed that honors walkmesh contours.",
   },
@@ -1281,7 +1286,13 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Player,
     description: "Set the player's chocobo type",
     stackParamsDef: [
-      { name: "Type", description: "Chocobo type (0 yellow, 1 green, 2 blue, 3 black, 4 gold)" },
+      { name: "Type", description: "Chocobo type (0 yellow, 1 green, 2 blue, 3 black, 4 gold)", type: { kind: 'enum', options: [
+        { value: 0, label: 'Yellow' },
+        { value: 1, label: 'Green' },
+        { value: 2, label: 'Blue' },
+        { value: 3, label: 'Black' },
+        { value: 4, label: 'Gold' },
+      ] } },
     ],
     notes: "Sets chocobo color and walkmesh parameters.",
   },

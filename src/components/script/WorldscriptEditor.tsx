@@ -3,7 +3,7 @@ import 'ace-builds/src-noconflict/theme-tomorrow_night';
 import 'ace-builds/src-noconflict/ext-language_tools';
 import { setCompleters } from 'ace-builds/src-noconflict/ext-language_tools';
 import './AceWorldscript.js';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Opcodes, Namespace } from '../../ff7/worldscript/opcodes';
 import { SPECIAL_MAP } from '../../ff7/worldscript/constants';
 
@@ -11,13 +11,34 @@ interface WorldscriptEditorProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  onContextChange?: (ctx: CallContext | null) => void;
+  showDetails?: boolean; // show opcode description, notes and param descriptions
 }
 
-export function WorldscriptEditor({ value, onChange, className }: WorldscriptEditorProps) {
+export type CallParamMeta = { name: string; description: string; type?: any };
+export type CallArg = { text: string; startCol: number; endCol: number };
+export type CallContext = {
+  row: number;
+  namespace: string;
+  method: string;
+  description?: string;
+  notes?: string;
+  params: CallParamMeta[];
+  activeParamIndex: number;
+  args: CallArg[];
+};
+
+export type WorldscriptEditorHandle = {
+  replaceCurrentCallArg: (index: number, newText: string) => void;
+  replaceCurrentCallArgs: (updates: Array<{ index: number; newText: string }>) => void;
+};
+
+export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, WorldscriptEditorProps>(function WorldscriptEditor({ value, onChange, className, onContextChange, showDetails = false }, ref) {
   const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const namespacesRef = useRef<string[]>([]);
   const methodsByNamespaceRef = useRef<Record<string, { name: string; description: string; stackParams: number; stackParamsDef?: Array<{ name: string; description: string }>; notes?: string }[]>>({});
+  const lastCallRef = useRef<CallContext | null>(null);
   const [signatureHelp, setSignatureHelp] = useState<{
     namespace: string;
     method: string;
@@ -121,7 +142,9 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
     ]);
   }, []);
 
-  const updateSignatureHelp = (editor: any) => {
+  const suppressNextSignatureRef = useRef<boolean>(false);
+
+  const updateSignatureHelp = (editor: any, options?: { silent?: boolean }) => {
     const session = editor.getSession();
     const pos = editor.getCursorPosition();
     const line: string = session.getLine(pos.row);
@@ -141,6 +164,8 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
 
     if (openIndex === -1) {
       setSignatureHelp(null);
+      lastCallRef.current = null;
+      onContextChange?.(null);
       return;
     }
 
@@ -148,12 +173,16 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
     const nsMethodMatch = beforeOpen.match(/([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\])?\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*$/);
     if (!nsMethodMatch) {
       setSignatureHelp(null);
+      lastCallRef.current = null;
+      onContextChange?.(null);
       return;
     }
     const typedNamespace = nsMethodMatch[1];
     const methodName = nsMethodMatch[2];
     if (!namespacesRef.current.includes(typedNamespace) || typedNamespace === 'Special') {
       setSignatureHelp(null);
+      lastCallRef.current = null;
+      onContextChange?.(null);
       return;
     }
 
@@ -161,6 +190,8 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
     const def = methods.find((m) => m.name === methodName);
     if (!def) {
       setSignatureHelp(null);
+      lastCallRef.current = null;
+      onContextChange?.(null);
       return;
     }
 
@@ -181,6 +212,42 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
       : Array.from({ length: def.stackParams }, (_, i) => `arg${i + 1}`);
     const paramDescriptions = def.stackParamsDef?.map(p => p.description);
 
+    // Find matching close paren scanning forward on this line
+    let depthF = 0;
+    let closeIndex = line.length;
+    for (let i = openIndex + 1; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '(') depthF++;
+      else if (ch === ')') {
+        if (depthF === 0) { closeIndex = i; break; }
+        depthF--;
+      }
+    }
+    const argsSlice = line.slice(openIndex + 1, closeIndex);
+    const args: CallArg[] = [];
+    {
+      let start = 0;
+      let nested = 0;
+      for (let i = 0; i <= argsSlice.length; i++) {
+        const ch = argsSlice[i] ?? ','; // sentinel comma at end
+        if (ch === '(') nested++;
+        else if (ch === ')') { if (nested > 0) nested--; }
+        else if ((ch === ',' && nested === 0) || i === argsSlice.length) {
+          const raw = argsSlice.slice(start, i);
+          const startCol = openIndex + 1 + start;
+          const endCol = openIndex + 1 + i;
+          args.push({ text: raw.trim(), startCol, endCol });
+          start = i + 1;
+        }
+      }
+    }
+    while (args.length < def.stackParams) {
+      args.push({ text: '', startCol: closeIndex, endCol: closeIndex });
+    }
+
+    const paramsMeta: CallParamMeta[] = (def.stackParamsDef ?? []).map(p => ({ name: p.name, description: p.description, // @ts-ignore
+      type: (p as any).type }));
+
     // Position near cursor
     const coords = editor.renderer.textToScreenCoordinates(pos.row, pos.column);
     const container = containerRef.current;
@@ -189,18 +256,33 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
     const top = coords.pageY - rect.top + editor.renderer.lineHeight;
     const left = coords.pageX - rect.left;
 
-    setSignatureHelp({
+    if (!options?.silent) {
+      setSignatureHelp({
+        namespace: typedNamespace,
+        method: def.name,
+        paramNames,
+        paramDescriptions,
+        description: def.description,
+        notes: def.notes,
+        activeParamIndex: activeIndex,
+        totalParams: def.stackParams,
+        top,
+        left,
+      });
+    }
+
+    const ctx: CallContext = {
+      row: pos.row,
       namespace: typedNamespace,
       method: def.name,
-      paramNames,
-      paramDescriptions,
       description: def.description,
       notes: def.notes,
+      params: paramsMeta.length === def.stackParams ? paramsMeta : paramNames.map((n, i) => ({ name: n, description: paramDescriptions?.[i] ?? '' })),
       activeParamIndex: activeIndex,
-      totalParams: def.stackParams,
-      top,
-      left,
-    });
+      args,
+    };
+    lastCallRef.current = ctx;
+    onContextChange?.(ctx);
   };
 
   const handleLoad = (editor: any) => {
@@ -215,12 +297,82 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
         }
         if (e.args === ')') {
           setSignatureHelp(null);
+          lastCallRef.current = null;
+          onContextChange?.(null);
         }
       }
     });
     // Update on cursor move
-    editor.getSession().selection.on('changeCursor', () => updateSignatureHelp(editor));
+    editor.getSession().selection.on('changeCursor', () => {
+      const silent = suppressNextSignatureRef.current;
+      updateSignatureHelp(editor, { silent });
+      suppressNextSignatureRef.current = false;
+    });
+    // Hide popover on blur/unfocus
+    editor.on('blur', () => {
+      setSignatureHelp(null);
+    });
+    // Hide popover on scroll events
+    editor.getSession().on('changeScrollTop', () => setSignatureHelp(null));
+    editor.getSession().on('changeScrollLeft', () => setSignatureHelp(null));
+    editor.renderer.on('scroll', () => setSignatureHelp(null));
   };
+
+  useImperativeHandle(ref, () => ({
+    replaceCurrentCallArg: (index: number, newText: string) => {
+      const editor = editorRef.current;
+      const ctx = lastCallRef.current;
+      if (!editor || !ctx) return;
+      const session = editor.getSession();
+      const line: string = session.getLine(ctx.row);
+      const args = [...ctx.args];
+      if (index < 0 || index >= args.length) return;
+      // Normalize spacing by rebuilding the whole args slice
+      const openCol = Math.min(...args.map(a => a.startCol));
+      const closeCol = Math.max(...args.map(a => a.endCol));
+      const pieces = args.map((a, i) => (i === index ? newText : a.text));
+      const rebuiltArgs = pieces.join(', ');
+      const newLine = line.slice(0, openCol) + rebuiltArgs + line.slice(closeCol);
+      session.replace({ start: { row: ctx.row, column: 0 }, end: { row: ctx.row, column: line.length } }, newLine);
+      // Move cursor to the end of the updated argument to preserve context
+      let caretOffset = 0;
+      for (let i = 0; i < index; i++) caretOffset += pieces[i].length + 2; // include ", "
+      caretOffset += pieces[index].length;
+      const caretCol = openCol + caretOffset;
+      suppressNextSignatureRef.current = true;
+      editor.moveCursorTo(ctx.row, caretCol);
+      updateSignatureHelp(editor, { silent: true });
+    },
+    replaceCurrentCallArgs: (updates: Array<{ index: number; newText: string }>) => {
+      const editor = editorRef.current;
+      const ctx = lastCallRef.current;
+      if (!editor || !ctx || updates.length === 0) return;
+      const session = editor.getSession();
+      const line: string = session.getLine(ctx.row);
+      const args = [...ctx.args];
+      const byIndex = new Map(updates.map(u => [u.index, u.newText]));
+      // Rebuild arguments slice region with normalized spacing
+      const openCol = Math.min(...args.map(a => a.startCol));
+      const closeCol = Math.max(...args.map(a => a.endCol));
+      const pieces: string[] = [];
+      for (let i = 0; i < args.length; i++) {
+        const text = byIndex.has(i) ? byIndex.get(i)! : args[i].text;
+        pieces.push(text);
+      }
+      const rebuiltArgs = pieces.join(', ');
+      const newLine = line.slice(0, openCol) + rebuiltArgs + line.slice(closeCol);
+      session.replace({ start: { row: ctx.row, column: 0 }, end: { row: ctx.row, column: line.length } }, newLine);
+      // Focus on the last updated argument
+      const focusIndex = Math.max(...updates.map(u => u.index));
+      let caretOffset = 0;
+      for (let i = 0; i < focusIndex; i++) caretOffset += pieces[i].length + 2;
+      caretOffset += pieces[focusIndex].length;
+      const caretCol = openCol + caretOffset;
+      suppressNextSignatureRef.current = true;
+      editor.moveCursorTo(ctx.row, caretCol);
+      updateSignatureHelp(editor, { silent: true });
+    }
+  }), []);
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <AceEditor
@@ -282,15 +434,15 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
             })}
             )
           </div>
-          {signatureHelp.description && (
+      {showDetails && signatureHelp.description && (
             <div style={{ marginTop: 4, opacity: 0.9 }}>{signatureHelp.description}</div>
           )}
-          {signatureHelp.notes && (
+          {showDetails && signatureHelp.notes && (
             <div style={{ marginTop: 6, opacity: 0.7 }}>
               <span style={{ fontWeight: 'bold' }}>Notes:</span> {signatureHelp.notes}
             </div>
           )}
-          {signatureHelp.notes && signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
+          {showDetails && signatureHelp.notes && signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
             <div style={{
               marginTop: 8,
               marginBottom: 8,
@@ -298,7 +450,7 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
               width: '100%'
             }} />
           )}
-          {signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
+          {showDetails && signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
             <div style={{ marginTop: 6, opacity: 0.85 }}>
               <span style={{ fontWeight: 'bold' }}>Param:</span> {signatureHelp.paramDescriptions[signatureHelp.activeParamIndex]}
             </div>
@@ -307,4 +459,4 @@ export function WorldscriptEditor({ value, onChange, className }: WorldscriptEdi
       )}
     </div>
   );
-}
+});
