@@ -30,6 +30,8 @@ export type CallContext = {
 export type WorldscriptEditorHandle = {
   replaceCurrentCallArg: (index: number, newText: string) => void;
   replaceCurrentCallArgs: (updates: Array<{ index: number; newText: string }>) => void;
+  getLine: (row: number) => string | null;
+  getLineCount: () => number;
 };
 
 export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, WorldscriptEditorProps>(function WorldscriptEditor({ value, onChange, className, onContextChange, showDetails = false }, ref) {
@@ -368,6 +370,19 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
       suppressNextSignatureRef.current = true;
       editor.moveCursorTo(ctx.row, caretCol);
       updateSignatureHelp(editor, { silent: true });
+    },
+    getLine: (row: number) => {
+      const editor = editorRef.current;
+      if (!editor) return null;
+      const session = editor.getSession();
+      const lineCount = session.getLength();
+      if (row < 0 || row >= lineCount) return null;
+      return session.getLine(row) as string;
+    },
+    getLineCount: () => {
+      const editor = editorRef.current;
+      if (!editor) return 0;
+      return editor.getSession().getLength();
     }
   }), []);
   return (

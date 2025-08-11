@@ -58,6 +58,7 @@ function MapViewer({
   const orthographicCameraRef = useRef<ThreeOrthographicCamera>(null);
   const { worldmap, mapType, mapId, mode, setSelectedTriangle } = useMapState();
   const zoomRef = useRef(1);
+  const currentCameraRef = useRef<ThreePerspectiveCamera | ThreeOrthographicCamera | null>(null);
 
   // Store camera state for seamless switching between camera types
   const cameraStateRef = useRef({
@@ -163,6 +164,7 @@ function MapViewer({
     
     if (newCamera && controlsRef.current && cameraStateRef.current) {
       newCamera.position.copy(cameraStateRef.current.position);
+      newCamera.up.set(0, 0, -1);
       newCamera.lookAt(cameraStateRef.current.target);
       
       if (newCamera instanceof ThreeOrthographicCamera) {
@@ -173,6 +175,7 @@ function MapViewer({
         const targetDistance = CAMERA_HEIGHT[mapType] / cameraStateRef.current.zoom;
         const direction = new Vector3().subVectors(newCamera.position, cameraStateRef.current.target).normalize();
         newCamera.position.copy(cameraStateRef.current.target).add(direction.multiplyScalar(targetDistance));
+        newCamera.up.set(0, 0, -1);
         newCamera.lookAt(cameraStateRef.current.target);
       }
       
@@ -203,6 +206,7 @@ function MapViewer({
     setRotation(0);
     // Reset camera position and orientation
     camera.position.set(mapDimensions.center.x, CAMERA_HEIGHT[mapType], mapDimensions.center.z);
+    camera.up.set(0, 0, -1);
     camera.lookAt(mapDimensions.center.x, 0, mapDimensions.center.z);
     if (cameraType === 'orthographic' && camera instanceof ThreeOrthographicCamera) {
       const margin = 50;
@@ -239,7 +243,6 @@ function MapViewer({
   useEffect(() => {
     if (mapDimensions.width) {
       const timer = setTimeout(() => {
-        console.debug('[MapViewer] Reset view on map change');
         resetView();
       }, 100);
       return () => clearTimeout(timer);
@@ -306,10 +309,28 @@ function MapViewer({
 
         <Canvas style={{ width: '100%', height: '100%' }}>
           {cameraType === 'perspective' ? (
-            <PerspectiveCamera makeDefault {...perspectiveConfig} ref={perspectiveCameraRef} />
+            <PerspectiveCamera
+              makeDefault
+              {...perspectiveConfig}
+              ref={perspectiveCameraRef}
+              onUpdate={(self) => {
+                self.up.set(0, 0, -1);
+                self.lookAt(mapDimensions.center.x, 0, mapDimensions.center.z);
+                currentCameraRef.current = self;
+              }}
+            />
           ) : (
             <>
-              <OrthographicCamera makeDefault {...orthoBase} ref={orthographicCameraRef} />
+              <OrthographicCamera
+                makeDefault
+                {...orthoBase}
+                ref={orthographicCameraRef}
+                onUpdate={(self) => {
+                  self.up.set(0, 0, -1);
+                  self.lookAt(mapDimensions.center.x, 0, mapDimensions.center.z);
+                  currentCameraRef.current = self;
+                }}
+              />
               <AutoOrtho mapDimensions={mapDimensions} margin={50} />
             </>
           )}

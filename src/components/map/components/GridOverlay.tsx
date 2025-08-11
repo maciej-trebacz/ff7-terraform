@@ -8,12 +8,15 @@ import { useMapState } from '@/hooks/useMapState';
 interface GridOverlayProps {
   worldmapLength: number;
   worldmapWidth: number;
+  active?: boolean; // when set, overrides using global mode
+  preselectedCell?: { x: number; z: number } | null;
 }
 
-export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps) {
+export function GridOverlay({ worldmapLength, worldmapWidth, active, preselectedCell }: GridOverlayProps) {
   const [hoveredCell, setHoveredCell] = useState<{ x: number, z: number } | null>(null);
   const { selectCell, selectedCell } = useGridSelection();
   const { mode } = useMapState();
+  const isActive = active ?? (mode === "export");
   const cellSize = MESH_SIZE * SCALE;
   const yOffset = 0;
   const SECTION_SIZE = 4; // 4x4 meshes per section
@@ -64,7 +67,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
   }, [worldmapLength, worldmapWidth, cellSize, yOffset]);
 
   const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
-    if (mode !== "export") return;
+    if (!isActive) return;
     
     // Get the intersection point in world coordinates
     const x = Math.floor(event.point.x / cellSize);
@@ -79,12 +82,12 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
   };
 
   const handlePointerOut = () => {
-    if (mode !== "export") return;
+    if (!isActive) return;
     setHoveredCell(null);
   };
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    if (mode !== "export") return;
+    if (!isActive) return;
     const x = Math.floor(event.point.x / cellSize);
     const z = Math.floor(event.point.z / cellSize);
     console.debug(`Clicked on cell at ${z}, ${x}`);
@@ -113,7 +116,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       <lineSegments geometry={gridGeometry} renderOrder={12}>
         <lineBasicMaterial 
           color="#ffffff" 
-          opacity={0.6} 
+          opacity={preselectedCell ? 0.4 : 0.6} 
           transparent
           depthWrite={false}
           depthTest={false}
@@ -124,7 +127,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       <lineSegments geometry={sectionGridGeometry} renderOrder={13}>
         <lineBasicMaterial 
           color="#ffff00" 
-          opacity={1} 
+          opacity={preselectedCell ? 0 : 1} 
           transparent
           depthWrite={false}
           depthTest={false}
@@ -132,7 +135,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       </lineSegments>
 
       {/* Hover highlight */}
-      {hoveredCell && mode === "export" && (
+      {hoveredCell && isActive && (
         <mesh
           position={[
             hoveredCell.x * cellSize + cellSize / 2,
@@ -148,7 +151,7 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
       )}
 
       {/* Selected cell highlight */}
-      {selectedCell && mode === "export" && (
+      {selectedCell && isActive && (
         <mesh
           position={[
             selectedCell.column * cellSize + cellSize / 2,
@@ -161,6 +164,34 @@ export function GridOverlay({ worldmapLength, worldmapWidth }: GridOverlayProps)
           <planeGeometry args={[cellSize, cellSize]} />
           <meshBasicMaterial color="#ffff00" opacity={0.3} transparent depthTest={false} />
         </mesh>
+      )}
+
+      {/* Preselected outline (red) without diagonal */}
+      {preselectedCell && (
+        (() => {
+          const x0 = preselectedCell.x * cellSize
+          const z0 = preselectedCell.z * cellSize
+          const x1 = x0 + cellSize
+          const z1 = z0 + cellSize
+          const y = yOffset + 0.12
+          const points = new Float32Array([
+            // top edge
+            x0, y, z0,  x1, y, z0,
+            // right edge
+            x1, y, z0,  x1, y, z1,
+            // bottom edge
+            x1, y, z1,  x0, y, z1,
+            // left edge
+            x0, y, z1,  x0, y, z0,
+          ])
+          const outline = new THREE.BufferGeometry()
+          outline.setAttribute('position', new THREE.Float32BufferAttribute(points, 3))
+          return (
+            <lineSegments geometry={outline} renderOrder={14}>
+              <lineBasicMaterial color="#ff0000" linewidth={1} transparent opacity={1} depthTest={false} depthWrite={false} />
+            </lineSegments>
+          )
+        })()
       )}
     </group>
   );

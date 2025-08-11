@@ -41,6 +41,7 @@ export function ScriptsTab() {
         <ScriptSidebar 
           className="w-[320px] box-content border-l overflow-y-auto"
           context={context}
+          editor={editorRef.current}
           onParamChange={(index, newText) => editorRef.current?.replaceCurrentCallArg(index, newText)}
           onBatchParamsChange={(updates) => editorRef.current?.replaceCurrentCallArgs(updates)}
         />

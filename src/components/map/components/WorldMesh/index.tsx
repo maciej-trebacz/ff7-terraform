@@ -24,6 +24,8 @@ interface WorldMeshProps {
   showNormals?: boolean;
   cameraHeight?: number;
   mode?: MapMode;
+  gridActiveOverride?: boolean;
+  preselectedCell?: { x: number; z: number } | null;
 }
 
 export function WorldMesh({ 
@@ -39,6 +41,8 @@ export function WorldMesh({
   showNormals = false,
   cameraHeight,
   mode,
+  gridActiveOverride,
+  preselectedCell,
 }: WorldMeshProps) {
   const [mouseDownPos, setMouseDownPos] = useState<{ x: number; y: number } | null>(null);
   const [paintingMouseDownPos, setPaintingMouseDownPos] = useState<{ x: number; y: number } | null>(null);
@@ -52,6 +56,8 @@ export function WorldMesh({
   const selectedTriangleGeometry = useSelectedTriangleGeometry(triangleMap, selectedFaceIndex);
 
   const selectedTriangle = triangleMap?.[selectedFaceIndex];
+
+  // cleaned debug effect
 
   // Update triangleMap in global state whenever it changes
   useEffect(() => {
@@ -222,6 +228,8 @@ export function WorldMesh({
             <GridOverlay 
               worldmapLength={worldmap.length} 
               worldmapWidth={worldmap[0].length} 
+              active={typeof gridActiveOverride === 'boolean' ? gridActiveOverride : (mode === 'export')}
+              preselectedCell={preselectedCell}
             />
           )}
           {mode === 'painting' && paintingSelectedTriangles.size > 0 && triangleMap && (

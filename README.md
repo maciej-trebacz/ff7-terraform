@@ -2,6 +2,12 @@
 
 ## TODO
 
+in system_13 there's a wrong type coercion (2nd param is angle offset, not model id):
+Entity.rotate_to_model(Entities.wild_chocobo, Entities.cloud)
+also this should use the direction component
+
+
+
 Map
 * changes are lost when changing current map, switching to a different tab or changing Alternatives
 * saving changes to alternative sections doesn't work

@@ -9,12 +9,18 @@ import { useLocationsState } from "@/hooks/useLocationsState"
 import { useMessagesState } from "@/hooks/useMessagesState"
 //
 import { modelsMapping, fieldsMapping } from "@/ff7/worldscript/constants"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { MapPicker } from "@/components/map/MapPicker"
+import { useMapState } from "@/hooks/useMapState"
+import { LOCATION_COLORS, MESH_SIZE } from "@/components/map/constants"
 
 interface ScriptSidebarProps {
   className?: string
   context?: CallContext | null
   onParamChange?: (index: number, newText: string) => void
   onBatchParamsChange?: (updates: Array<{ index: number; newText: string }>) => void
+  editor?: import('@/components/script/WorldscriptEditor').WorldscriptEditorHandle | null
 }
 
 type CustomRenderer = (ctx: CallContext, onBatchChange: (updates: Array<{ index: number; newText: string }>) => void) => JSX.Element
@@ -39,10 +45,14 @@ const customUiRegistry: Record<string, CustomRenderer> = {
   'Window.set_dimensions': (ctx, onBatch) => <SetDimensionsUI ctx={ctx} onBatch={onBatch} />,
   'Entity.set_direction_facing': (ctx, onBatch) => directionRadial(ctx, onBatch, 0, { label: 'Direction' }),
   'Entity.set_movement_direction': (ctx, onBatch) => directionRadial(ctx, onBatch, 0, { label: 'Direction' }),
+  'Entity.set_mesh_coords': (ctx, onBatch) => <SetMeshCoordsUI ctx={ctx} onBatch={onBatch} scope="Entity" />,
+  'Point.set_mesh_coords': (ctx, onBatch) => <SetMeshCoordsUI ctx={ctx} onBatch={onBatch} scope="Point" />,
+  'Entity.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} scope="Entity" />,
+  'Point.set_coords_in_mesh': (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} scope="Point" />,
 };
 
 function colorTriple(ctx: CallContext, onBatch: (updates: Array<{ index: number; newText: string }>) => void) {
-  const [b, g, r] = ctx.args.map(a => parseInt(a.text || '0', 10) || 0);
+  const [r, g, b] = ctx.args.map(a => parseInt(a.text || '0', 10) || 0);
   const clamp = (n: number) => Math.max(0, Math.min(255, n|0));
   const hex = `#${clamp(r).toString(16).padStart(2,'0')}${clamp(g).toString(16).padStart(2,'0')}${clamp(b).toString(16).padStart(2,'0')}`.toUpperCase();
   const onChange = (val: string) => {
@@ -52,9 +62,9 @@ function colorTriple(ctx: CallContext, onBatch: (updates: Array<{ index: number;
     const ng = parseInt(v.slice(2,4), 16);
     const nb = parseInt(v.slice(4,6), 16);
     onBatch([
-      { index: 0, newText: String(nb) },
+      { index: 0, newText: String(nr) },
       { index: 1, newText: String(ng) },
-      { index: 2, newText: String(nr) },
+      { index: 2, newText: String(nb) },
     ]);
   };
   return (
@@ -74,12 +84,14 @@ function colorTriple(ctx: CallContext, onBatch: (updates: Array<{ index: number;
   );
 }
 
-export function ScriptSidebar({ className, context, onParamChange, onBatchParamsChange }: ScriptSidebarProps) {
+export function ScriptSidebar({ className, context, onParamChange, onBatchParamsChange, editor }: ScriptSidebarProps) {
   const customRenderer = useMemo(() => {
     if (!context) return null;
     const key = `${context.namespace}.${context.method}`;
-    return customUiRegistry[key] ?? null;
-  }, [context]);
+    // Inject editor handle into context so custom UIs can scan script if needed
+    const renderer = customUiRegistry[key] ?? null;
+    return renderer ? ((ctx, onBatch) => renderer({ ...ctx, editor } as any, onBatch)) : null;
+  }, [context, editor]);
 
   return (
     <div className={cn("bg-background p-2", className)}>
@@ -127,7 +139,7 @@ export function ScriptSidebar({ className, context, onParamChange, onBatchParams
                   </div>
                 );
               }
-              // Direction radial control for better UX (0 up, 64 right, 128 down, 192 left)
+              // Direction radial control for better UX (0 down, 64 right, 128 up, 192 left)
               if (type?.kind === 'number' && (p.name?.toLowerCase?.() === 'direction') && (type.min ?? 0) === 0 && (type.max ?? 255) === 255) {
                 const n = parseInt(arg.text || '0', 10) || 0
                 return (
@@ -575,6 +587,277 @@ function directionRadial(ctx: CallContext, onBatch: (updates: Array<{ index: num
   )
 }
 
+function SetMeshCoordsUI({ ctx, onBatch, scope }: { ctx: CallContext; onBatch: (updates: Array<{ index: number; newText: string }>) => void, scope: 'Entity' | 'Point' }) {
+  const [open, setOpen] = useState(false)
+  const x = Math.max(0, Math.min(35, parseInt(ctx.args[0]?.text || '0', 10) || 0))
+  const z = Math.max(0, Math.min(27, parseInt(ctx.args[1]?.text || '0', 10) || 0))
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium">{ctx.namespace}.{ctx.method}</div>
+      {ctx.description && (
+        <div className="text-[11px] text-muted-foreground">{ctx.description}</div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">X</Label>
+          <input
+            type="number"
+            className="h-7 text-xs w-full bg-background border rounded px-2"
+            min={0}
+            max={35}
+            value={x}
+            onChange={(e) => onBatch([{ index: 0, newText: String(Math.max(0, Math.min(35, parseInt(e.target.value || '0', 10) || 0))) }])}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Z</Label>
+          <input
+            type="number"
+            className="h-7 text-xs w-full bg-background border rounded px-2"
+            min={0}
+            max={27}
+            value={z}
+            onChange={(e) => onBatch([{ index: 1, newText: String(Math.max(0, Math.min(27, parseInt(e.target.value || '0', 10) || 0))) }])}
+          />
+        </div>
+      </div>
+      <div>
+        <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => setOpen(true)}>
+          Pick from Map
+        </Button>
+      </div>
+
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o) }}>
+        <DialogContent className="max-w-[900px] p-0">
+          <DialogHeader className="px-4 pt-4">
+            <DialogTitle className="text-base">Pick Mesh Coordinates ({scope})</DialogTitle>
+          </DialogHeader>
+          <div className="h-[560px] w-[900px]">
+            <MapPicker
+              preselect={{ x, z }}
+              onPickCell={(mx, mz) => { onBatch([{ index: 0, newText: String(mx) }, { index: 1, newText: String(mz) }]); setOpen(false); }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function SetCoordsInMeshUI({ ctx, onBatch, scope }: { ctx: CallContext; onBatch: (updates: Array<{ index: number; newText: string }>) => void, scope: 'Entity' | 'Point' }) {
+  const SIZE = 320
+  const MAX = 8191
+  const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
+  const x = clamp(parseInt(ctx.args[0]?.text || '0', 10) || 0, 0, MAX)
+  const z = clamp(parseInt(ctx.args[1]?.text || '0', 10) || 0, 0, MAX)
+  const editorHandle = (ctx as any)?.editor as (import('@/components/script/WorldscriptEditor').WorldscriptEditorHandle | null | undefined)
+  const [lastMesh, setLastMesh] = useState<{ x: number; z: number } | null>(null)
+
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const draggingRef = useRef(false)
+
+  const toPx = (v: number) => Math.round(v * (SIZE - 1) / MAX)
+  const toVal = (p: number) => clamp(Math.round(p * MAX / (SIZE - 1)), 0, MAX)
+
+  const commit = (nx: number, nz: number) => {
+    const cx = clamp(Math.round(nx), 0, MAX)
+    const cz = clamp(Math.round(nz), 0, MAX)
+    onBatch([
+      { index: 0, newText: String(cx) },
+      { index: 1, newText: String(cz) },
+    ])
+  }
+
+  const updateFromEvent = (clientX: number, clientY: number) => {
+    const el = stageRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const px = clamp(clientX - rect.left, 0, SIZE - 1)
+    const pz = clamp(clientY - rect.top, 0, SIZE - 1)
+    commit(toVal(px), toVal(pz))
+  }
+
+  const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    draggingRef.current = true
+    updateFromEvent(e.clientX, e.clientY)
+    const move = (ev: MouseEvent) => updateFromEvent(ev.clientX, ev.clientY)
+    const up = () => { draggingRef.current = false; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', up)
+  }
+
+  const pxX = toPx(x)
+  const pxZ = toPx(z)
+
+  useEffect(() => {
+    if (!editorHandle || typeof ctx.row !== 'number') return
+    // Scan upward from current row for a set_mesh_coords call and extract X,Z
+    const lineCount = editorHandle.getLineCount?.() ?? 0
+    const start = Math.min(ctx.row, lineCount - 1)
+    for (let r = start; r >= 0; r--) {
+      const line = editorHandle.getLine?.(r) ?? ''
+      const m = line.match(/\b(?:Entity|Point)\.set_mesh_coords\s*\(([^)]*)\)/)
+      if (m) {
+        const args = m[1].split(',')
+        const mx = parseInt((args[0] ?? '').trim() || '0', 10)
+        const mz = parseInt((args[1] ?? '').trim() || '0', 10)
+        if (Number.isFinite(mx) && Number.isFinite(mz)) {
+          const clampedX = Math.max(0, Math.min(35, mx))
+          const clampedZ = Math.max(0, Math.min(27, mz))
+          setLastMesh({ x: clampedX, z: clampedZ })
+          break
+        }
+      }
+    }
+  }, [editorHandle, ctx.row])
+
+  // Draw terrain preview for the selected mesh using simple colors
+  const { worldmap, mapType, textures, loadMap, loadTextures } = useMapState()
+  const initializedRef = useRef(false)
+  useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
+    ;(async () => {
+      const MAP_ID_BY_TYPE: Record<'overworld' | 'underwater' | 'glacier', 'WM0' | 'WM2' | 'WM3'> = {
+        overworld: 'WM0',
+        underwater: 'WM2',
+        glacier: 'WM3',
+      }
+      if (!textures || textures.length === 0) {
+        await loadTextures(mapType)
+      }
+      if (!worldmap) {
+        await loadMap(MAP_ID_BY_TYPE[mapType], mapType)
+      }
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !worldmap) return
+    // Need last mesh coords to know which mesh fragment to draw
+    const mx = lastMesh?.x ?? null
+    const mz = lastMesh?.z ?? null
+    if (mx === null || mz === null) return
+    // Worldmap is [rows][cols]; these are mesh indices already
+    const mesh = worldmap[mz]?.[mx]
+    if (!mesh) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = SIZE
+    const H = SIZE
+    ctx.clearRect(0, 0, W, H)
+    const colors = LOCATION_COLORS[mapType]
+    // Render filled triangles colored by terrain type/location
+    for (const t of mesh.triangles) {
+      const vs = [t.vertex0, t.vertex1, t.vertex2]
+      const toScreen = (v: { x: number; z: number }) => ({
+        x: (v.x / MESH_SIZE) * (W - 1),
+        y: (v.z / MESH_SIZE) * (H - 1),
+      })
+      const p0 = toScreen(vs[0])
+      const p1 = toScreen(vs[1])
+      const p2 = toScreen(vs[2])
+      const color = colors?.[t.type] ?? '#888'
+      ctx.beginPath()
+      ctx.moveTo(p0.x, p0.y)
+      ctx.lineTo(p1.x, p1.y)
+      ctx.lineTo(p2.x, p2.y)
+      ctx.closePath()
+      ctx.fillStyle = color
+      ctx.fill()
+    }
+    // Optional outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'
+    ctx.lineWidth = 1
+    for (const t of mesh.triangles) {
+      const vs = [t.vertex0, t.vertex1, t.vertex2]
+      const toScreen = (v: { x: number; z: number }) => ({
+        x: (v.x / MESH_SIZE) * (W - 1),
+        y: (v.z / MESH_SIZE) * (H - 1),
+      })
+      const p0 = toScreen(vs[0])
+      const p1 = toScreen(vs[1])
+      const p2 = toScreen(vs[2])
+      ctx.beginPath()
+      ctx.moveTo(p0.x, p0.y)
+      ctx.lineTo(p1.x, p1.y)
+      ctx.lineTo(p2.x, p2.y)
+      ctx.closePath()
+      ctx.stroke()
+    }
+  }, [canvasRef.current, worldmap, lastMesh?.x, lastMesh?.z, mapType])
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium">{ctx.namespace}.{ctx.method}</div>
+      {ctx.description && (
+        <div className="text-[11px] text-muted-foreground">{ctx.description}</div>
+      )}
+      {lastMesh ? (
+        <div className="text-[11px] text-muted-foreground">Mesh X/Z: {lastMesh.x},{lastMesh.z}</div>
+      ) : (
+        <div className="text-[11px] text-muted-foreground">Mesh X/Z: (not found above)</div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">X</Label>
+          <input
+            type="number"
+            className="h-7 text-xs w-full bg-background border rounded px-2"
+            min={0}
+            max={MAX}
+            value={x}
+            onChange={(e) => {
+              const v = clamp(parseInt(e.target.value || '0', 10) || 0, 0, MAX)
+              onBatch([{ index: 0, newText: String(v) }])
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Z</Label>
+          <input
+            type="number"
+            className="h-7 text-xs w-full bg-background border rounded px-2"
+            min={0}
+            max={MAX}
+            value={z}
+            onChange={(e) => {
+              const v = clamp(parseInt(e.target.value || '0', 10) || 0, 0, MAX)
+              onBatch([{ index: 1, newText: String(v) }])
+            }}
+          />
+        </div>
+      </div>
+
+      {lastMesh && (
+      <div className="space-y-1">
+        <div className="text-[11px] text-muted-foreground">Pick within mesh {lastMesh.x}x{lastMesh.z}</div>
+        <div
+          ref={stageRef}
+          className="relative select-none border rounded bg-muted"
+          style={{ width: SIZE, height: SIZE }}
+          onMouseDown={onMouseDown}
+        >
+          <canvas ref={canvasRef} width={SIZE} height={SIZE} className="absolute inset-0 w-full h-full" />
+          {/* crosshair / grid optional */}
+          <div
+            className="absolute w-3 h-3 rounded-full bg-pink-600 border-2 border-white"
+            style={{ left: pxX - 2, top: pxZ - 2 }}
+          />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// removed legacy MeshPicker in favor of MapPicker
+
 function DirectionRadial({ value, onChange }: { value: number; onChange: (val: number) => void }) {
   const size = 112
   const radius = 48
@@ -587,9 +870,9 @@ function DirectionRadial({ value, onChange }: { value: number; onChange: (val: n
     const dx = x - center.x
     const dy = y - center.y
     if (dx === 0 && dy === 0) return
-    // atan2 returns angle from +X; map so 0 is up: add PI/2 then normalize to [0,1)
+    // atan2 returns angle from +X (right). Map so 0 is down and increases clockwise.
     const angle = Math.atan2(dy, dx) // -PI..PI (screen coords)
-    let normalized = (angle + Math.PI/2) / (Math.PI * 2)
+    let normalized = (Math.PI/2 - angle) / (Math.PI * 2)
     normalized = (normalized % 1 + 1) % 1
     const val = Math.max(0, Math.min(255, Math.round(normalized * 256) % 256))
     onChange(val)
@@ -607,7 +890,7 @@ function DirectionRadial({ value, onChange }: { value: number; onChange: (val: n
   }
 
   const normalized = (value % 256 + 256) % 256 / 256
-  const angle = normalized * Math.PI * 2 - Math.PI/2
+  const angle = Math.PI/2 - normalized * Math.PI * 2
   const knobX = center.x + Math.cos(angle) * radius
   const knobY = center.y + Math.sin(angle) * radius
 
@@ -623,7 +906,7 @@ function DirectionRadial({ value, onChange }: { value: number; onChange: (val: n
           {/* tick marks */}
           {[0,64,128,192].map((v) => {
             const n = v/256
-            const a = n * Math.PI * 2 - Math.PI/2
+            const a = Math.PI/2 - n * Math.PI * 2
             const ix = center.x + Math.cos(a) * (radius - 8)
             const iy = center.y + Math.sin(a) * (radius - 8)
             const ox = center.x + Math.cos(a) * (radius + 8)

@@ -812,9 +812,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the terrain color at a point",
     stackParamsDef: [
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
       { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
     ],
     notes: "Light effect to be applied to terrain in the affected area.",
   },
@@ -839,9 +839,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the top color of the sky",
     stackParamsDef: [
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
       { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
     ],
     notes: "Light effect applied to sky top.",
   },
@@ -853,9 +853,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the bottom color of the sky",
     stackParamsDef: [
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
       { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
     ],
     notes: "Light effect applied to sky bottom.",
   },
@@ -1140,7 +1140,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     description: "Rotate active entity to face a model",
     stackParamsDef: [
       { name: "Model ID", description: "Model to face" },
-      { name: "Angle offset", description: "Additional rotation after facing model (e.g., 128 = back to model)" },
+      { name: "Angle offset", description: "Additional rotation after facing model (e.g., 128 = back to model)", type: { kind: 'number', min: 0, max: 255 } },
     ],
   },
   0x334: {
