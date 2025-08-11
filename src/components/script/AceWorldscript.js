@@ -13,7 +13,7 @@
       var keywords = "end|if|return|then|goto|or|and|not";
       var builtinConstants = "true|false|nil|_G|_VERSION";
       var functions =
-        "Savemap|Player|System|Entity|Entities|Special|Memory|Point|Window|Sound|bit|byte|word";
+        "Savemap|Player|System|Entity|Entities|Special|Memory|Point|Window|Sound|Camera|bit|byte|word";
       var stdLibaries = "string|package|os|io|math|debug|table|coroutine";
       var deprecatedIn5152 = "setn|foreach|foreachi|gcinfo|log10|maxn";
       var keywordMapper = this.createKeywordMapper(

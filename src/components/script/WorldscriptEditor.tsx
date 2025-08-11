@@ -22,7 +22,6 @@ export type CallContext = {
   namespace: string;
   method: string;
   description?: string;
-  notes?: string;
   params: CallParamMeta[];
   activeParamIndex: number;
   args: CallArg[];
@@ -45,7 +44,6 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
     paramNames: string[];
     paramDescriptions?: string[];
     description?: string;
-    notes?: string;
     activeParamIndex: number;
     totalParams: number;
     top: number;
@@ -53,10 +51,11 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
   } | null>(null);
   useEffect(() => {
     const namespaceNames = Object.values(Namespace) as string[];
-    const methodsByNamespace: Record<string, { name: string; description: string; stackParams: number; stackParamsDef?: Array<{ name: string; description: string }>; notes?: string }[]> = {};
+    const methodsByNamespace: Record<string, { name: string; description: string; stackParams: number; stackParamsDef?: Array<{ name: string; description: string }> }[]> = {};
     for (const def of Object.values(Opcodes)) {
       const list = methodsByNamespace[def.namespace] ?? [];
-      list.push({ name: def.name, description: def.description, stackParams: def.stackParams, stackParamsDef: def.stackParamsDef, notes: def.notes });
+      const mergedDescription = def.notes ? `${def.description} ${def.notes}` : def.description;
+      list.push({ name: def.name, description: mergedDescription, stackParams: def.stackParams, stackParamsDef: def.stackParamsDef });
       methodsByNamespace[def.namespace] = list;
     }
 
@@ -263,7 +262,6 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
         paramNames,
         paramDescriptions,
         description: def.description,
-        notes: def.notes,
         activeParamIndex: activeIndex,
         totalParams: def.stackParams,
         top,
@@ -276,7 +274,6 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
       namespace: typedNamespace,
       method: def.name,
       description: def.description,
-      notes: def.notes,
       params: paramsMeta.length === def.stackParams ? paramsMeta : paramNames.map((n, i) => ({ name: n, description: paramDescriptions?.[i] ?? '' })),
       activeParamIndex: activeIndex,
       args,
@@ -437,12 +434,7 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
       {showDetails && signatureHelp.description && (
             <div style={{ marginTop: 4, opacity: 0.9 }}>{signatureHelp.description}</div>
           )}
-          {showDetails && signatureHelp.notes && (
-            <div style={{ marginTop: 6, opacity: 0.7 }}>
-              <span style={{ fontWeight: 'bold' }}>Notes:</span> {signatureHelp.notes}
-            </div>
-          )}
-          {showDetails && signatureHelp.notes && signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
+          {showDetails && signatureHelp.paramDescriptions && signatureHelp.paramDescriptions[signatureHelp.activeParamIndex] && (
             <div style={{
               marginTop: 8,
               marginBottom: 8,

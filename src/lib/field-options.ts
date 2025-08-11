@@ -19,7 +19,7 @@ export async function loadFieldOptions(): Promise<{ options: FieldOption[]; byId
     const options: FieldOption[] = Object.values(scenes).map((scene: any) => {
       const name: string = scene.fieldName
       const mapName: string = scene.mapNames && scene.mapNames.length > 0 ? ` (${scene.mapNames[0]})` : ''
-      return { id: scene.id as number, label: `${scene.id} - ${name}${mapName}` }
+      return { id: scene.id as number, label: `${name}${mapName} (ID: ${scene.id})` }
     })
     const byId: Record<number, string> = {}
     for (const opt of options) byId[opt.id] = opt.label

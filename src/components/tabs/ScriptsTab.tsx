@@ -39,7 +39,7 @@ export function ScriptsTab() {
           <ScriptEditor className="h-full" editorHandleRef={editorRef as any} onWorldscriptContextChange={setContext} />
         </div>
         <ScriptSidebar 
-          className="w-[300px] border-l overflow-y-auto"
+          className="w-[320px] box-content border-l overflow-y-auto"
           context={context}
           onParamChange={(index, newText) => editorRef.current?.replaceCurrentCallArg(index, newText)}
           onBatchParamsChange={(updates) => editorRef.current?.replaceCurrentCallArgs(updates)}
