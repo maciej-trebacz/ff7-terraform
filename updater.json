@@ -1,10 +1,10 @@
 {
-  "version": "0.9.0",
-  "pub_date": "2025-08-11T20:00:00+00:00",
+  "version": "0.9.1",
+  "pub_date": "2025-08-12T10:00:00+00:00",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290TnlRT2pkTzJxMHlsRU9PWWEwN1hFQjcwSnFzUUJTeHozNFlQQW5MZm1rODlwK0xMMmJ2c1lEUkczQ3l1c0lzRHE5bzE4N0ZFZmt3MjdSU3FEZitQd3c0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzU0OTM3Mzk1CWZpbGU6RkY3IExhbmRzY2FwZXJfMC45LjBfeDY0LXNldHVwLmV4ZQpHckpldHFEb3V1U2xseWRnYzdjdnRmTFEzTUYwUEhuNnpXa2RMN2FqZ1g2NDdORkhYS3c3WE9TTTdTZ3pTK3RXMGRHclRSWmNFbm9Ka0g5RVRTeVlCZz09Cg==",
-      "url": "https://github.com/maciej-trebacz/ff7-landscaper/releases/download/0.9.0/FF7.Landscaper_0.9.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWktFU284d290TjdYV2U0SFJzVkZyQVZ1WkNEcXkrSnFqUmpTbWdYaGxIU3o5dmpYRkpUUG5VdmtIYnE2Skt3d1hWbUhNT1JRRCtGMDdJQ1ZGK1BxYXM3ekhBV0dWa2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzU0OTg4MDY1CWZpbGU6RkY3IExhbmRzY2FwZXJfMC45LjFfeDY0LXNldHVwLmV4ZQpwMkdIelNlSWpxRmdZSEhCdDV1dDBkQWpLdUZGb2M4cHkrNVk2RTZXdUJvcjVyOHIxRGwzRFp2Ym8yU1RGODI5YWQvSzJBN21NSTlGTXp2aEUyZFBBUT09Cg",
+      "url": "https://github.com/maciej-trebacz/ff7-landscaper/releases/download/0.9.1/FF7.Landscaper_0.9.1_x64-setup.exe"
     }
   }
 }
