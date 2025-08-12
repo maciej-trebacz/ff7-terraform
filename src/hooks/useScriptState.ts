@@ -30,7 +30,7 @@ const scriptsStateAtom = atom<ScriptsState>({
   scriptType: FunctionType.System,
   selectedScript: null,
   ev: null,
-  decompiled: false,
+  decompiled: true,
   decompiledScripts: {}
 })
 

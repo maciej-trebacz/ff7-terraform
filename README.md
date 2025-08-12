@@ -6,6 +6,14 @@ in system_13 there's a wrong type coercion (2nd param is angle offset, not model
 Entity.rotate_to_model(Entities.wild_chocobo, Entities.cloud)
 also this should use the direction component
 
+Export mode is broken
+
+Add "Open Script" button next to Script ID in the Triangle sidebar
+
+System.call_function has wrong sidebar ui
+
+System.set_field_entry_by_id(51) in chocobo_29 model script - wrong opcode?
+
 
 
 Map

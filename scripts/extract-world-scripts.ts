@@ -85,6 +85,8 @@ const fileData = fs.readFileSync(filePath);
 console.log('Parsing .ev file...');
 const evFile = new EvFile(new Uint8Array(fileData));
 
+const evFilename = path.basename(filePath);
+
 // Process all functions
 console.log(`Found ${evFile.functions.length} functions to process`);
 
@@ -115,7 +117,7 @@ evFile.functions.forEach((fn, index) => {
         break;
     }
     
-    const outputPath = path.join(outputDir, filename);
+    const outputPath = path.join(outputDir, evFilename + '_' + filename);
     
     // Check if this is an aliased function (no opcodes but has aliasId)
     if (!fn.opcodes && fn.aliasId !== undefined) {

@@ -5,7 +5,7 @@ import { setCompleters } from 'ace-builds/src-noconflict/ext-language_tools';
 import './AceWorldscript.js';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Opcodes, Namespace } from '../../ff7/worldscript/opcodes';
-import { SPECIAL_MAP } from '../../ff7/worldscript/constants';
+import { SPECIAL_MAP, modelsMapping, fieldsMapping } from '../../ff7/worldscript/constants';
 
 interface WorldscriptEditorProps {
   value: string;
@@ -40,6 +40,8 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
   const namespacesRef = useRef<string[]>([]);
   const methodsByNamespaceRef = useRef<Record<string, { name: string; description: string; stackParams: number; stackParamsDef?: Array<{ name: string; description: string }>; notes?: string }[]>>({});
   const lastCallRef = useRef<CallContext | null>(null);
+  // Toggle to enable/disable the inline signature popover UI without removing logic
+  const ENABLE_SIGNATURE_POPOVER = false;
   const [signatureHelp, setSignatureHelp] = useState<{
     namespace: string;
     method: string;
@@ -53,6 +55,8 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
   } | null>(null);
   useEffect(() => {
     const namespaceNames = Object.values(Namespace) as string[];
+    // For autocomplete, also expose pseudo-namespaces that provide constant-based members
+    const autocompleteNamespaces = Array.from(new Set([...namespaceNames, 'Entities', 'Fields']));
     const methodsByNamespace: Record<string, { name: string; description: string; stackParams: number; stackParamsDef?: Array<{ name: string; description: string }> }[]> = {};
     for (const def of Object.values(Opcodes)) {
       const list = methodsByNamespace[def.namespace] ?? [];
@@ -63,6 +67,10 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
 
     // Special namespace: provide fields instead of methods
     const specialFields = Object.values(SPECIAL_MAP).map(v => v.name);
+    // Entities namespace: provide model slugs instead of methods
+    const entitySlugs = Object.values(modelsMapping);
+    // Fields namespace: provide field slugs instead of methods
+    const fieldSlugs = Object.values(fieldsMapping);
 
     // Save for handlers
     namespacesRef.current = namespaceNames;
@@ -88,14 +96,37 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
           // Support both "Namespace.method" and special array syntax like "Savemap[0xF29].method"
           const nsMatch = beforeDot.match(/([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\])?\s*$/);
           const typedNamespace = nsMatch?.[1];
-          if (typedNamespace && namespaceNames.includes(typedNamespace)) {
+          if (typedNamespace && autocompleteNamespaces.includes(typedNamespace)) {
             if (typedNamespace === 'Special') {
               const candidates = prefix ? specialFields.filter(n => n.startsWith(prefix)) : specialFields;
               callback(null, candidates.map((n) => ({
                 name: n,
                 value: n,
                 caption: n,
+                // Suggest property-like items without parentheses
                 meta: 'Special',
+                score: 1000,
+              })));
+              return;
+            }
+            if (typedNamespace === 'Entities') {
+              const candidates = prefix ? entitySlugs.filter(n => n.startsWith(prefix)) : entitySlugs;
+              callback(null, candidates.map((n) => ({
+                name: n,
+                value: n,
+                caption: n,
+                meta: 'Entities',
+                score: 1000,
+              })));
+              return;
+            }
+            if (typedNamespace === 'Fields') {
+              const candidates = prefix ? fieldSlugs.filter(n => n.startsWith(prefix)) : fieldSlugs;
+              callback(null, candidates.map((n) => ({
+                name: n,
+                value: n,
+                caption: n,
+                meta: 'Fields',
                 score: 1000,
               })));
               return;
@@ -111,6 +142,8 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
                 name: m.name,
                 value: m.name,
                 caption: m.name,
+                // Insert parentheses and place caret inside
+                snippet: `${m.name}($0)`,
                 meta: typedNamespace,
                 score: 1000,
               }))
@@ -122,8 +155,8 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
         // Otherwise suggest Namespaces only in the allowed positions
         if (isTokenAtLineStart || isAfterSpaceOrParen) {
           const filteredNamespaces = prefix
-            ? namespaceNames.filter((n) => n.startsWith(prefix))
-            : namespaceNames;
+            ? autocompleteNamespaces.filter((n) => n.startsWith(prefix))
+            : autocompleteNamespaces;
           callback(
             null,
             filteredNamespaces.map((n) => ({
@@ -149,37 +182,54 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
     const session = editor.getSession();
     const pos = editor.getCursorPosition();
     const line: string = session.getLine(pos.row);
-    const beforeCursor = line.slice(0, pos.column);
 
-    // Find the matching open paren for current cursor by scanning backwards
-    let depth = 0;
-    let openIndex = -1;
-    for (let i = beforeCursor.length - 1; i >= 0; i--) {
-      const ch = beforeCursor[i];
-      if (ch === ')') depth++;
-      else if (ch === '(') {
-        if (depth === 0) { openIndex = i; break; }
-        depth--;
+    type ParsedCall = {
+      ns: string;
+      method: string;
+      nsStart: number;
+      openIndex: number;
+      closeIndex: number;
+    };
+
+    // Find all Namespace.method(...) calls on this line (supports optional [..] after namespace)
+    const calls: ParsedCall[] = [];
+    const regex = /([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\])?\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(line)) !== null) {
+      const nsStart = m.index;
+      const ns = m[1];
+      const method = m[2];
+      const openIndex = nsStart + m[0].length - 1; // last char is '('
+      // Scan forward to find matching close paren for this call
+      let depth = 0;
+      let closeIndex = line.length;
+      for (let i = openIndex + 1; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '(') depth++;
+        else if (ch === ')') {
+          if (depth === 0) { closeIndex = i; break; }
+          depth--;
+        }
       }
+      calls.push({ ns, method, nsStart, openIndex, closeIndex });
     }
 
-    if (openIndex === -1) {
+    // Choose the innermost call that contains the cursor position
+    const col = pos.column;
+    const containing = calls
+      .filter(c => col >= c.nsStart && col <= (c.closeIndex + 1))
+      .sort((a, b) => (a.closeIndex - a.nsStart) - (b.closeIndex - b.nsStart));
+    const selected = containing[0];
+
+    if (!selected) {
       setSignatureHelp(null);
       lastCallRef.current = null;
       onContextChange?.(null);
       return;
     }
 
-    const beforeOpen = beforeCursor.slice(0, openIndex);
-    const nsMethodMatch = beforeOpen.match(/([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\])?\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*$/);
-    if (!nsMethodMatch) {
-      setSignatureHelp(null);
-      lastCallRef.current = null;
-      onContextChange?.(null);
-      return;
-    }
-    const typedNamespace = nsMethodMatch[1];
-    const methodName = nsMethodMatch[2];
+    const typedNamespace = selected.ns;
+    const methodName = selected.method;
     if (!namespacesRef.current.includes(typedNamespace) || typedNamespace === 'Special') {
       setSignatureHelp(null);
       lastCallRef.current = null;
@@ -196,34 +246,14 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
       return;
     }
 
-    // Count top-level commas between '(' and cursor to get active param index
-    const argsSoFar = beforeCursor.slice(openIndex + 1);
-    let commas = 0;
-    let nested = 0;
-    for (let i = 0; i < argsSoFar.length; i++) {
-      const ch = argsSoFar[i];
-      if (ch === '(') nested++;
-      else if (ch === ')') { if (nested > 0) nested--; }
-      else if (ch === ',' && nested === 0) commas++;
-    }
-    const activeIndex = Math.min(commas, Math.max(0, def.stackParams - 1));
-
     const paramNames = def.stackParamsDef && def.stackParamsDef.length === def.stackParams
       ? def.stackParamsDef.map(p => p.name)
       : Array.from({ length: def.stackParams }, (_, i) => `arg${i + 1}`);
     const paramDescriptions = def.stackParamsDef?.map(p => p.description);
 
-    // Find matching close paren scanning forward on this line
-    let depthF = 0;
-    let closeIndex = line.length;
-    for (let i = openIndex + 1; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '(') depthF++;
-      else if (ch === ')') {
-        if (depthF === 0) { closeIndex = i; break; }
-        depthF--;
-      }
-    }
+    // Compute argument slices between the '(' and its matching ')'
+    const openIndex = selected.openIndex;
+    const closeIndex = selected.closeIndex;
     const argsSlice = line.slice(openIndex + 1, closeIndex);
     const args: CallArg[] = [];
     {
@@ -244,6 +274,34 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
     }
     while (args.length < def.stackParams) {
       args.push({ text: '', startCol: closeIndex, endCol: closeIndex });
+    }
+
+    // Active param index: if cursor is inside parens, count commas up to cursor; otherwise default to 0
+    let activeIndex = 0;
+    if (col > openIndex && col <= closeIndex) {
+      const beforeCursor = line.slice(openIndex + 1, col);
+      let commas = 0;
+      let nested = 0;
+      for (let i = 0; i < beforeCursor.length; i++) {
+        const ch = beforeCursor[i];
+        if (ch === '(') nested++;
+        else if (ch === ')') { if (nested > 0) nested--; }
+        else if (ch === ',' && nested === 0) commas++;
+      }
+      activeIndex = Math.min(commas, Math.max(0, def.stackParams - 1));
+    } else {
+      // Cursor outside but touching the call (e.g., just after ')'): focus last parameter
+      const totalCommas = (() => {
+        let c = 0, n = 0;
+        for (let i = 0; i < argsSlice.length; i++) {
+          const ch = argsSlice[i];
+          if (ch === '(') n++;
+          else if (ch === ')') { if (n > 0) n--; }
+          else if (ch === ',' && n === 0) c++;
+        }
+        return c;
+      })();
+      activeIndex = Math.min(Math.max(0, totalCommas), Math.max(0, def.stackParams - 1));
     }
 
     const paramsMeta: CallParamMeta[] = (def.stackParamsDef ?? []).map(p => ({ name: p.name, description: p.description, // @ts-ignore
@@ -410,7 +468,7 @@ export const WorldscriptEditor = forwardRef<WorldscriptEditorHandle, Worldscript
         className={className}
         style={{ width: '100%', height: '100%' }}
       />
-      {signatureHelp && (
+      {ENABLE_SIGNATURE_POPOVER && signatureHelp && (
         <div
           style={{
             position: 'absolute',
