@@ -17,7 +17,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
-ff7-lib = { path = "../../ff7-lib" }
+ff7-lib = { git = "https://github.com/maciej-trebacz/ff7-lib.rs", branch = "main" }
 
 [target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
 tauri-plugin-updater = "2"

@@ -24,3 +24,6 @@ output
 *.sln
 *.sw?
 ~/.tauri/ff7-terraform.key
+
+# Cargo local development overrides
+.cargo/config.local.toml
