@@ -1,0 +1,7 @@
+# Cargo configuration for FF7 Landscaper
+# This file allows local development with path dependencies while using Git dependencies in production
+
+[patch."https://github.com/maciej-trebacz/ff7-lib.rs"]
+# Override the Git dependency with local path for development
+# This only works if the local path exists, otherwise falls back to Git
+ff7-lib = { path = "../ff7-lib" }
