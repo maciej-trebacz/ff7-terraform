@@ -22,6 +22,8 @@ interface ScriptsState {
   ev: EvFile | null
   decompiled: boolean
   decompiledScripts: Record<string, string> // Map of script keys to decompiled content
+  scriptHistory: SelectedScript[] // History of opened scripts for back/forward navigation
+  currentHistoryIndex: number // Current position in history (-1 means no history)
 }
 
 const scriptsStateAtom = atom<ScriptsState>({
@@ -32,6 +34,8 @@ const scriptsStateAtom = atom<ScriptsState>({
   ev: null,
   decompiled: true,
   decompiledScripts: {},
+  scriptHistory: [],
+  currentHistoryIndex: -1,
 })
 
 export function useScriptsState() {
@@ -48,6 +52,8 @@ export function useScriptsState() {
         selectedScript: null,
         ev: null,
         decompiledScripts: {}, // Clear decompiled scripts when loading new scripts
+        scriptHistory: [], // Clear script history when loading new scripts
+        currentHistoryIndex: -1,
       }))
 
       const targetMap = mapId || state.selectedMap
@@ -91,7 +97,29 @@ export function useScriptsState() {
       ...(script.type === FunctionType.Model && { modelId: script.modelId }),
       ...(script.type === FunctionType.Mesh && { x: script.x, y: script.y }),
     }
-    setState((prev) => ({ ...prev, selectedScript: selection }))
+
+    setState((prev) => {
+      // Create new history array
+      let newHistory = [...prev.scriptHistory]
+      let newIndex = prev.currentHistoryIndex
+
+      // If we're not at the end of history, remove everything after current position
+      if (newIndex < newHistory.length - 1) {
+        newHistory = newHistory.slice(0, newIndex + 1)
+      }
+
+      // Add new selection to history
+      newHistory.push(selection)
+      newIndex = newHistory.length - 1
+
+      return {
+        ...prev,
+        selectedScript: selection,
+        scriptType: script.type,
+        scriptHistory: newHistory,
+        currentHistoryIndex: newIndex,
+      }
+    })
   }
 
   const isScriptSelected = (script: FF7Function): boolean => {
@@ -297,6 +325,42 @@ export function useScriptsState() {
     }
   }
 
+  const canGoBack = (): boolean => {
+    return state.currentHistoryIndex > 0
+  }
+
+  const canGoForward = (): boolean => {
+    return state.currentHistoryIndex < state.scriptHistory.length - 1
+  }
+
+  const goBack = () => {
+    if (!canGoBack()) return
+
+    const newIndex = state.currentHistoryIndex - 1
+    const previousScript = state.scriptHistory[newIndex]
+
+    setState((prev) => ({
+      ...prev,
+      selectedScript: previousScript,
+      scriptType: previousScript.type,
+      currentHistoryIndex: newIndex,
+    }))
+  }
+
+  const goForward = () => {
+    if (!canGoForward()) return
+
+    const newIndex = state.currentHistoryIndex + 1
+    const nextScript = state.scriptHistory[newIndex]
+
+    setState((prev) => ({
+      ...prev,
+      selectedScript: nextScript,
+      scriptType: nextScript.type,
+      currentHistoryIndex: newIndex,
+    }))
+  }
+
   const saveScripts = async () => {
     if (!state.ev) {
       setMessage("No scripts loaded to save", true)
@@ -383,5 +447,10 @@ export function useScriptsState() {
     getScriptKey,
     isAliasSelected,
     getAliasTargetScript,
+    // Navigation functions
+    canGoBack,
+    canGoForward,
+    goBack,
+    goForward,
   }
 }

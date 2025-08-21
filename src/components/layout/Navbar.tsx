@@ -17,6 +17,7 @@ import { useLgpState } from "@/hooks/useLgpState"
 import { useMapState } from "@/hooks/useMapState"
 import { useScriptsState } from "@/hooks/useScriptState"
 import { useLocationsState } from "@/hooks/useLocationsState"
+import { useKeyboardShortcuts, getShortcutDisplay } from "@/hooks/useKeyboardShortcuts"
 
 export function Navbar() {
   const { setMessage } = useStatusBar()
@@ -25,7 +26,7 @@ export function Navbar() {
   const { saveMap } = useMapState()
   const { saveScripts } = useScriptsState()
   const { saveLocations } = useLocationsState()
-  const { loadLgp, opened } = useLgpState() 
+  const { loadLgp, opened } = useLgpState()
 
   const clearFocus = () => {
     document.activeElement instanceof HTMLElement && document.activeElement.blur()
@@ -70,6 +71,24 @@ export function Navbar() {
     }
   }
 
+  // Set up keyboard shortcuts
+  const shortcuts = [
+    {
+      key: 'o',
+      ctrlOrCmd: true,
+      action: handleOpenDirectory,
+      description: 'Open FF7 game directory'
+    },
+    {
+      key: 's',
+      ctrlOrCmd: true,
+      action: handleSave,
+      description: 'Save changes'
+    }
+  ]
+
+  useKeyboardShortcuts(shortcuts)
+
   const ComingSoonTab = ({ value, children }: { value: string, children: React.ReactNode }) => (
     <TooltipProvider delayDuration={100} >
       <Tooltip>
@@ -108,7 +127,7 @@ export function Navbar() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Open FF7 game directory</p>
+                <p>Open FF7 game directory ({getShortcutDisplay({ key: 'o', ctrlOrCmd: true, action: () => {} })})</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -127,7 +146,7 @@ export function Navbar() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Save changes</p>
+                <p>Save changes ({getShortcutDisplay({ key: 's', ctrlOrCmd: true, action: () => {} })})</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { Plus, Trash2, Search } from "lucide-react"
+import { Plus, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MapId } from "@/hooks/useMapState"
@@ -8,6 +8,7 @@ import { useScriptsState } from "@/hooks/useScriptState"
 import { FunctionType } from "@/ff7/evfile"
 import { useState } from "react"
 import { AddScriptModal } from "@/components/modals/AddScriptModal"
+import { useKeyboardShortcuts, getShortcutDisplay } from "@/hooks/useKeyboardShortcuts"
 
 const MAP_NAMES: Record<MapId, string> = {
   WM0: "Overworld",
@@ -16,9 +17,49 @@ const MAP_NAMES: Record<MapId, string> = {
 }
 
 export function ScriptControls() {
-  const { selectedMap, scriptType, setSelectedMap, setScriptType, loadScripts, addModelScript, addMeshScript } =
-    useScriptsState()
+  const {
+    selectedMap,
+    scriptType,
+    setSelectedMap,
+    setScriptType,
+    loadScripts,
+    addModelScript,
+    addMeshScript,
+    canGoBack,
+    canGoForward,
+    goBack,
+    goForward,
+  } = useScriptsState()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
+  // Set up keyboard shortcuts for script navigation
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const shortcuts = [
+    {
+      key: isMac ? '[' : 'ArrowLeft',
+      ctrlOrCmd: isMac,
+      alt: !isMac,
+      action: () => {
+        if (canGoBack()) {
+          goBack()
+        }
+      },
+      description: 'Go back to previous script'
+    },
+    {
+      key: isMac ? ']' : 'ArrowRight',
+      ctrlOrCmd: isMac,
+      alt: !isMac,
+      action: () => {
+        if (canGoForward()) {
+          goForward()
+        }
+      },
+      description: 'Go forward to next script'
+    }
+  ]
+
+  useKeyboardShortcuts(shortcuts)
 
   const handleMapChange = (value: MapId) => {
     setSelectedMap(value)
@@ -113,6 +154,48 @@ export function ScriptControls() {
               <SelectItem value={FunctionType.Mesh.toString()}>Mesh</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="h-3.5 w-[1px] bg-border" />
+
+        <div className="flex items-center gap-1.5">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={goBack}
+                  disabled={!canGoBack()}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                <p>Go back to previous script ({getShortcutDisplay({ key: isMac ? '[' : 'ArrowLeft', ctrlOrCmd: isMac, alt: !isMac, action: () => {} })})</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={goForward}
+                  disabled={!canGoForward()}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                <p>Go forward to next script ({getShortcutDisplay({ key: isMac ? ']' : 'ArrowRight', ctrlOrCmd: isMac, alt: !isMac, action: () => {} })})</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
