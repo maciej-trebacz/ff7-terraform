@@ -3,15 +3,16 @@ import { useScriptsState } from "@/hooks/useScriptState"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { FunctionType } from "@/ff7/evfile"
-import { ArrowRight } from "lucide-react"
 import { OpcodesEditor } from "@/components/script/OpcodesEditor"
-import { WorldscriptEditor, type CallContext, type WorldscriptEditorHandle } from "@/components/script/WorldscriptEditor"
+import {
+  WorldscriptEditor,
+  type CallContext,
+  type WorldscriptEditorHandle,
+} from "@/components/script/WorldscriptEditor"
 import { useEffect, useRef, useState } from "react"
 import { Worldscript } from "@/ff7/worldscript/worldscript"
 import { Switch } from "@/components/ui/switch"
-
 
 interface ScriptEditorProps {
   className?: string
@@ -20,18 +21,24 @@ interface ScriptEditorProps {
   onWorldscriptContextChange?: (ctx: CallContext | null) => void
 }
 
-export function ScriptEditor({ className, decompiled = false, editorHandleRef, onWorldscriptContextChange }: ScriptEditorProps) {
-  const { 
-    functions, 
-    getSelectedScript, 
-    updateSelectedScript, 
-    selectScript, 
-    setScriptType, 
+export function ScriptEditor({
+  className,
+  decompiled = false,
+  editorHandleRef,
+  onWorldscriptContextChange,
+}: ScriptEditorProps) {
+  const {
+    functions,
+    getSelectedScript,
+    updateSelectedScript,
     decompiled: globalDecompiled,
     setDecompiledMode,
     getDecompiledScript,
     updateDecompiledScript,
-    getScriptKey
+    getScriptKey,
+    isAliasSelected,
+    getAliasTargetScript,
+    isScriptSelected,
   } = useScriptsState()
 
   const [isDecompiling, setIsDecompiling] = useState(false)
@@ -39,10 +46,10 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
   const localEditorHandleRef = useRef<WorldscriptEditorHandle | null>(null)
 
   const scriptToEdit = getSelectedScript()
-  const systemFunctions = functions.filter(f => f.type === FunctionType.System)
+  const systemFunctions = functions.filter((f) => f.type === FunctionType.System)
 
   // Get the decompiled script content if in decompiled mode
-  const decompiledContent = scriptToEdit ? getDecompiledScript(scriptToEdit) : ''
+  const decompiledContent = scriptToEdit ? getDecompiledScript(scriptToEdit) : ""
 
   // Effect to handle decompilation when script changes or decompiled mode is enabled
   useEffect(() => {
@@ -69,7 +76,7 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
 
   const handleAliasChange = (checked: boolean) => {
     if (!scriptToEdit) return
-    
+
     if (!checked) {
       // Remove alias
       updateSelectedScript({ aliasId: undefined })
@@ -84,25 +91,9 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
 
   const handleAliasSelect = (aliasId: string) => {
     if (!scriptToEdit) return
-    
+
     updateSelectedScript({ aliasId: parseInt(aliasId) })
   }
-
-  const handleGoToScript = () => {
-    if (scriptToEdit?.aliasId === undefined) return
-
-    const targetScript = functions.find(f => 
-      f.type === FunctionType.System && 
-      f.id === scriptToEdit.aliasId
-    )
-    
-    if (targetScript) {
-      setScriptType(FunctionType.System)
-      selectScript(targetScript)
-    }
-  }
-
-
 
   const handleDecompiledChange = async (checked: boolean) => {
     if (!scriptToEdit) {
@@ -112,7 +103,7 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
 
     try {
       setIsDecompiling(true)
-      
+
       if (checked) {
         // Switching from raw to decompiled mode
         // Decompile the current raw script
@@ -129,7 +120,7 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
           updateSelectedScript({ script: compiled })
         }
       }
-      
+
       setDecompiledMode(checked)
     } catch (error) {
       console.error("Failed to convert script:", error)
@@ -152,15 +143,50 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
   }
 
   const getScriptName = () => {
-    if (!scriptToEdit) return null;
-    
+    if (!scriptToEdit) return null
+
+    const isEditingAlias = isAliasSelected()
+    const aliasTarget = isEditingAlias ? getAliasTargetScript() : null
+
+    if (isEditingAlias && aliasTarget) {
+      // Show both the alias source and target information
+      const originalScript = functions.find((f) => isScriptSelected(f))
+      let sourceName = ""
+      let targetName = ""
+
+      if (originalScript) {
+        switch (originalScript.type) {
+          case FunctionType.System:
+            sourceName = `System ${originalScript.id}`
+            break
+          case FunctionType.Model:
+            sourceName = `Model ${originalScript.modelId}:${originalScript.id}`
+            break
+          case FunctionType.Mesh:
+            sourceName = `Mesh ${originalScript.x},${originalScript.y}:${originalScript.id}`
+            break
+        }
+      }
+
+      switch (aliasTarget.type) {
+        case FunctionType.System:
+          targetName = `System ${aliasTarget.id}`
+          break
+        case FunctionType.Model:
+          targetName = `Model ${aliasTarget.modelId}:${aliasTarget.id}`
+          break
+      }
+
+      return `${sourceName} → ${targetName}`
+    }
+
     switch (scriptToEdit.type) {
       case FunctionType.System:
-        return `System ${scriptToEdit.id}`;
+        return `System ${scriptToEdit.id}`
       case FunctionType.Model:
-        return `Model ${scriptToEdit.modelId}:${scriptToEdit.id}`;
+        return `Model ${scriptToEdit.modelId}:${scriptToEdit.id}`
       case FunctionType.Mesh:
-        return `Mesh ${scriptToEdit.x},${scriptToEdit.y}:${scriptToEdit.id}`;
+        return `Mesh ${scriptToEdit.x},${scriptToEdit.y}:${scriptToEdit.id}`
     }
   }
 
@@ -169,14 +195,10 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
       <div className="flex items-center justify-between border-b px-4 py-2 shrink-0">
         <div className="flex items-center gap-2">
           <div className="text-sm font-medium">Script Editor</div>
-          {scriptToEdit && (
-            <div className="text-xs text-muted-foreground">
-              {getScriptName()}
-            </div>
-          )}
+          {scriptToEdit && <div className="text-xs text-muted-foreground">{getScriptName()}</div>}
         </div>
 
-        {scriptToEdit && (
+        {scriptToEdit && !isAliasSelected() && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Switch
@@ -185,16 +207,20 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
                 onCheckedChange={handleDecompiledChange}
                 disabled={isDecompiling}
               />
-              <Label htmlFor="decompiled-mode" className="text-xs">Decompiled</Label>
+              <Label htmlFor="decompiled-mode" className="text-xs">
+                Decompiled
+              </Label>
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox 
+              <Checkbox
                 id="is-alias"
                 checked={scriptToEdit.aliasId !== undefined}
                 onCheckedChange={handleAliasChange}
                 disabled={!scriptToEdit || systemFunctions.length === 0}
               />
-              <Label htmlFor="is-alias" className="text-xs">Alias to:</Label>
+              <Label htmlFor="is-alias" className="text-xs">
+                Alias to:
+              </Label>
             </div>
             <Select
               value={scriptToEdit?.aliasId?.toString()}
@@ -205,7 +231,7 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                {systemFunctions.map(fn => (
+                {systemFunctions.map((fn) => (
                   <SelectItem key={fn.id} value={fn.id.toString()} className="text-xs">
                     System {fn.id}
                   </SelectItem>
@@ -218,18 +244,7 @@ export function ScriptEditor({ className, decompiled = false, editorHandleRef, o
 
       <div className="flex-1 overflow-auto">
         {scriptToEdit ? (
-          scriptToEdit.aliasId !== undefined ? (
-            <div className="flex items-center justify-center h-full">
-              <Button 
-                variant="outline" 
-                className="text-xs gap-2"
-                onClick={handleGoToScript}
-              >
-                Go to script System {scriptToEdit.aliasId}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ) : isDecompiling ? (
+          isDecompiling ? (
             <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
               Decompiling script...
             </div>

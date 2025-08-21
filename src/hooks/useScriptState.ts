@@ -1,9 +1,9 @@
-import { atom, useAtom } from 'jotai'
-import { useStatusBar } from './useStatusBar'
-import { useLgpState } from './useLgpState'
-import { MapId } from './useMapState'
-import { EvFile, FF7Function, FunctionType, SystemFunction, ModelFunction, MeshFunction } from '@/ff7/evfile'
-import { Worldscript } from '@/ff7/worldscript/worldscript'
+import { atom, useAtom } from "jotai"
+import { useStatusBar } from "./useStatusBar"
+import { useLgpState } from "./useLgpState"
+import { MapId } from "./useMapState"
+import { EvFile, FF7Function, FunctionType, SystemFunction, ModelFunction, MeshFunction } from "@/ff7/evfile"
+import { Worldscript } from "@/ff7/worldscript/worldscript"
 
 interface SelectedScript {
   type: FunctionType
@@ -26,12 +26,12 @@ interface ScriptsState {
 
 const scriptsStateAtom = atom<ScriptsState>({
   functions: [],
-  selectedMap: 'WM0',
+  selectedMap: "WM0",
   scriptType: FunctionType.System,
   selectedScript: null,
   ev: null,
   decompiled: true,
-  decompiledScripts: {}
+  decompiledScripts: {},
 })
 
 export function useScriptsState() {
@@ -42,18 +42,18 @@ export function useScriptsState() {
   const loadScripts = async (mapId?: MapId) => {
     try {
       // Clear existing scripts first
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         functions: [],
         selectedScript: null,
         ev: null,
-        decompiledScripts: {} // Clear decompiled scripts when loading new scripts
+        decompiledScripts: {}, // Clear decompiled scripts when loading new scripts
       }))
 
       const targetMap = mapId || state.selectedMap
       console.debug("[Scripts] Loading scripts for map", targetMap)
 
-      const evData = await getFile(targetMap.toLowerCase() + '.ev')
+      const evData = await getFile(targetMap.toLowerCase() + ".ev")
       if (!evData) {
         console.error("Failed to read ev file")
         return
@@ -62,10 +62,10 @@ export function useScriptsState() {
       console.debug("[Scripts] Parsing ev file")
 
       const evFile = new EvFile(evData)
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         functions: evFile.functions,
-        ev: evFile
+        ev: evFile,
       }))
 
       console.debug("[Scripts] Scripts loaded", evFile.functions)
@@ -76,11 +76,11 @@ export function useScriptsState() {
   }
 
   const setSelectedMap = (map: MapId) => {
-    setState(prev => ({ ...prev, selectedMap: map }))
+    setState((prev) => ({ ...prev, selectedMap: map }))
   }
 
   const setScriptType = (type: FunctionType) => {
-    setState(prev => ({ ...prev, scriptType: type, selectedScript: null }))
+    setState((prev) => ({ ...prev, scriptType: type, selectedScript: null }))
   }
 
   const selectScript = (script: FF7Function) => {
@@ -89,9 +89,9 @@ export function useScriptsState() {
       id: script.id,
       aliasId: script.aliasId,
       ...(script.type === FunctionType.Model && { modelId: script.modelId }),
-      ...(script.type === FunctionType.Mesh && { x: script.x, y: script.y })
+      ...(script.type === FunctionType.Mesh && { x: script.x, y: script.y }),
     }
-    setState(prev => ({ ...prev, selectedScript: selection }))
+    setState((prev) => ({ ...prev, selectedScript: selection }))
   }
 
   const isScriptSelected = (script: FF7Function): boolean => {
@@ -101,21 +101,59 @@ export function useScriptsState() {
       case FunctionType.System:
         return state.selectedScript.type === script.type && state.selectedScript.id === script.id
       case FunctionType.Model:
-        return state.selectedScript.type === script.type && 
-               state.selectedScript.id === script.id && 
-               state.selectedScript.modelId === script.modelId
+        return (
+          state.selectedScript.type === script.type &&
+          state.selectedScript.id === script.id &&
+          state.selectedScript.modelId === script.modelId
+        )
       case FunctionType.Mesh:
-        return state.selectedScript.type === script.type && 
-               state.selectedScript.id === script.id && 
-               state.selectedScript.x === script.x && 
-               state.selectedScript.y === script.y
+        return (
+          state.selectedScript.type === script.type &&
+          state.selectedScript.id === script.id &&
+          state.selectedScript.x === script.x &&
+          state.selectedScript.y === script.y
+        )
     }
+  }
+
+  const isAliasSelected = (): boolean => {
+    if (!state.selectedScript) return false
+
+    const selectedScript = state.functions.find((f) => isScriptSelected(f))
+    return selectedScript?.aliasId !== undefined
+  }
+
+  const getAliasTargetScript = (): FF7Function | null => {
+    if (!state.selectedScript) return null
+
+    const selectedScript = state.functions.find((f) => isScriptSelected(f))
+    if (!selectedScript?.aliasId) return null
+
+    return (
+      state.functions.find(
+        (f) => (f.type === FunctionType.System || f.type === FunctionType.Model) && f.id === selectedScript.aliasId
+      ) || null
+    )
   }
 
   const getSelectedScript = (): FF7Function | null => {
     if (!state.selectedScript) return null
 
-    return state.functions.find(f => isScriptSelected(f)) || null
+    // First try to find the directly selected script
+    let selectedScript = state.functions.find((f) => isScriptSelected(f))
+
+    // If the selected script is an alias, find and return the target script
+    if (selectedScript?.aliasId !== undefined) {
+      const targetScript = state.functions.find(
+        (f) => (f.type === FunctionType.System || f.type === FunctionType.Model) && f.id === selectedScript!.aliasId
+      )
+
+      if (targetScript) {
+        return targetScript
+      }
+    }
+
+    return selectedScript || null
   }
 
   const updateSelectedScript = (updates: Partial<FF7Function>) => {
@@ -124,47 +162,60 @@ export function useScriptsState() {
 
     console.debug("[Scripts] Updating script", currentScript.id, updates)
 
+    // Check if we're editing an alias - if so, we need to update the target script
+    const isEditingAlias = isAliasSelected()
+    const targetScript = isEditingAlias ? getAliasTargetScript() : null
+    const scriptToUpdate = targetScript || currentScript
+
     // Update the script in the functions array
-    setState(prev => {
-      const updatedFunctions = prev.functions.map(fn => {
-        if (!isScriptSelected(fn)) return fn
+    setState((prev) => {
+      const updatedFunctions = prev.functions.map((fn) => {
+        // If editing an alias, update the target script; otherwise update the selected script
+        const shouldUpdate = isEditingAlias
+          ? fn.type === scriptToUpdate.type && fn.id === scriptToUpdate.id
+          : isScriptSelected(fn)
+
+        if (!shouldUpdate) return fn
 
         switch (fn.type) {
           case FunctionType.System:
             return {
               ...fn,
-              ...updates
+              ...updates,
             } as SystemFunction
           case FunctionType.Model:
             return {
               ...fn,
-              ...updates
+              ...updates,
             } as ModelFunction
           case FunctionType.Mesh:
             return {
               ...fn,
-              ...updates
+              ...updates,
             } as MeshFunction
         }
       })
 
       return {
         ...prev,
-        functions: updatedFunctions
+        functions: updatedFunctions,
       }
     })
 
-    // Also update the selection state if needed
-    if ('type' in updates || 'id' in updates || 'modelId' in updates || 'x' in updates || 'y' in updates) {
+    // Also update the selection state if needed (only for non-alias updates)
+    if (
+      !isEditingAlias &&
+      ("type" in updates || "id" in updates || "modelId" in updates || "x" in updates || "y" in updates)
+    ) {
       selectScript({
         ...currentScript,
-        ...updates
+        ...updates,
       } as FF7Function)
     }
   }
 
   const setDecompiledMode = (enabled: boolean) => {
-    setState(prev => ({ ...prev, decompiled: enabled }))
+    setState((prev) => ({ ...prev, decompiled: enabled }))
   }
 
   const getScriptKey = (script: FF7Function): string => {
@@ -180,17 +231,17 @@ export function useScriptsState() {
 
   const getDecompiledScript = (script: FF7Function): string => {
     const key = getScriptKey(script)
-    return state.decompiledScripts[key] || ''
+    return state.decompiledScripts[key] || ""
   }
 
   const updateDecompiledScript = (script: FF7Function, content: string) => {
     const key = getScriptKey(script)
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       decompiledScripts: {
         ...prev.decompiledScripts,
-        [key]: content
-      }
+        [key]: content,
+      },
     }))
   }
 
@@ -203,9 +254,9 @@ export function useScriptsState() {
       const newFunction = state.ev.addModelFunction(modelId, functionId)
 
       // Update the functions list to match the EvFile's functions array
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        functions: state.ev!.functions
+        functions: state.ev!.functions,
       }))
 
       // Select the new script
@@ -229,9 +280,9 @@ export function useScriptsState() {
       const newFunction = state.ev.addMeshFunction(x, y, functionId)
 
       // Update the functions list to match the EvFile's functions array
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        functions: state.ev!.functions
+        functions: state.ev!.functions,
       }))
 
       // Select the new script
@@ -285,7 +336,7 @@ export function useScriptsState() {
           }
         } else {
           // Find the corresponding function in state.functions to check for modifications
-          const stateFunc = state.functions.find(sf => getScriptKey(sf) === scriptKey)
+          const stateFunc = state.functions.find((sf) => getScriptKey(sf) === scriptKey)
           if (stateFunc && stateFunc.script !== func.script) {
             // If the script text has been directly modified, update it
             evFile.setFunctionScript(i, stateFunc.script)
@@ -298,12 +349,11 @@ export function useScriptsState() {
       const evData = evFile.writeFile()
 
       // Save the .ev file back to the LGP archive
-      const filename = state.selectedMap.toLowerCase() + '.ev'
+      const filename = state.selectedMap.toLowerCase() + ".ev"
       await setFile(filename, evData)
 
       console.timeEnd("[Scripts] Saving scripts")
       setMessage("Scripts saved successfully!")
-
     } catch (error) {
       console.error("Error saving scripts:", error)
       setMessage("Failed to save scripts: " + (error as Error).message, true)
@@ -330,6 +380,8 @@ export function useScriptsState() {
     setDecompiledMode,
     getDecompiledScript,
     updateDecompiledScript,
-    getScriptKey
+    getScriptKey,
+    isAliasSelected,
+    getAliasTargetScript,
   }
-} 
+}

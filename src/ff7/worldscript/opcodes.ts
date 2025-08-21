@@ -1,22 +1,22 @@
 export type ParamType =
-  | { kind: 'boolean' }
-  | { kind: 'number'; min?: number; max?: number; step?: number }
-  | { kind: 'enum'; options: Array<{ value: number | string; label: string }> };
+  | { kind: "boolean" }
+  | { kind: "number"; min?: number; max?: number; step?: number }
+  | { kind: "enum"; options: Array<{ value: number | string; label: string }> }
 
 export type OpcodeDefinition = {
-  name: string;
-  stackParams: number;
-  codeParams: number;
-  mnemonic: Mnemonic;
-  namespace: Namespace;
-  description: string;
-  pushesResult?: boolean;
+  name: string
+  stackParams: number
+  codeParams: number
+  mnemonic: Mnemonic
+  namespace: Namespace
+  description: string
+  pushesResult?: boolean
   // Detailed parameter documentation sourced from ffrtt wiki
-  stackParamsDef?: Array<{ name: string; description: string; type?: ParamType }>;
-  codeParamsDef?: Array<{ name: string; description: string }>;
+  stackParamsDef?: Array<{ name: string; description: string; type?: ParamType }>
+  codeParamsDef?: Array<{ name: string; description: string }>
   // Additional behavior/usage notes sourced from ffrtt wiki (kept for backwards-compat); UI merges this into description
-  notes?: string;
-};
+  notes?: string
+}
 
 export enum Namespace {
   System = "System",
@@ -158,9 +158,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.NEG,
     namespace: Namespace.Math,
     description: "Negate value on stack",
-    stackParamsDef: [
-      { name: "A", description: "Value to negate" },
-    ],
+    stackParamsDef: [{ name: "A", description: "Value to negate" }],
     notes: "Pushes -A to the stack.",
   },
   0x17: {
@@ -171,9 +169,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.NOT,
     namespace: Namespace.Math,
     description: "Logical NOT of value on stack",
-    stackParamsDef: [
-      { name: "A", description: "Value to complement" },
-    ],
+    stackParamsDef: [{ name: "A", description: "Value to complement" }],
     notes: "Pushes 1 if A is 0, otherwise 0.",
   },
   0x18: {
@@ -184,9 +180,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.DIST_POINT,
     namespace: Namespace.Entity,
     description: "Get distance from active entity to a point",
-    stackParamsDef: [
-      { name: "Point ID", description: "Point to compare distance to" },
-    ],
+    stackParamsDef: [{ name: "Point ID", description: "Point to compare distance to" }],
     notes: "Pushes the distance between the active entity and the specified point. Exact calculation/scale is unclear.",
   },
   0x19: {
@@ -197,10 +191,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.DIST_MODEL,
     namespace: Namespace.Entity,
     description: "Get distance from active entity to another",
-    stackParamsDef: [
-      { name: "Model ID", description: "Model to compare distance to" },
-    ],
-    notes: "Pushes the distance between the active entity and the entity for the given model. Exact calculation/scale is unclear.",
+    stackParamsDef: [{ name: "Model ID", description: "Model to compare distance to" }],
+    notes:
+      "Pushes the distance between the active entity and the entity for the given model. Exact calculation/scale is unclear.",
   },
   0x1b: {
     name: "direction_to_point",
@@ -210,9 +203,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.DIR_POINT,
     namespace: Namespace.Entity,
     description: "Get direction from active entity to a point",
-    stackParamsDef: [
-      { name: "Point ID", description: "Point to compare direction to" },
-    ],
+    stackParamsDef: [{ name: "Point ID", description: "Point to compare direction to" }],
     notes: "Pushes the direction from the active entity towards the specified point.",
   },
   0x30: {
@@ -422,7 +413,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
       { name: "Bank Address", description: "Bank location to write to" },
       { name: "Value", description: "Value to write" },
     ],
-    notes: "Address should be provided via a normal bank access instruction; that location is overwritten with Value. Supports writing bit/byte/word depending on address form.",
+    notes:
+      "Address should be provided via a normal bank access instruction; that location is overwritten with Value. Supports writing bit/byte/word depending on address form.",
   },
 
   0x100: {
@@ -442,9 +434,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_CONSTANT,
     namespace: Namespace.Memory,
     description: "Push a constant value onto the stack",
-    codeParamsDef: [
-      { name: "A", description: "Immediate value" },
-    ],
+    codeParamsDef: [{ name: "A", description: "Immediate value" }],
     notes: "Pushes A to the stack.",
   },
   0x114: {
@@ -455,10 +445,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SAVEMAP_BIT,
     namespace: Namespace.Savemap,
     description: "Read a bit from Bank 0",
-    codeParamsDef: [
-      { name: "Address", description: "Bit address in bank" },
-    ],
-    notes: "Pushes the bit at Address from bank0 (Savemap bank 1). Bit addressing treats the bank as a contiguous bitfield.",
+    codeParamsDef: [{ name: "Address", description: "Bit address in bank" }],
+    notes:
+      "Pushes the bit at Address from bank0 (Savemap bank 1). Bit addressing treats the bank as a contiguous bitfield.",
   },
   0x117: {
     name: "bit",
@@ -468,10 +457,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SPECIAL_BIT,
     namespace: Namespace.Special,
     description: "Read a bit from the special register",
-    codeParamsDef: [
-      { name: "Address", description: "Special variable address" },
-    ],
-    notes: "Access a special VM variable by address. There are 21 special variables (e.g., entity coords, direction, RNG byte, etc.). See wiki for full list.",
+    codeParamsDef: [{ name: "Address", description: "Special variable address" }],
+    notes:
+      "Access a special VM variable by address. There are 21 special variables (e.g., entity coords, direction, RNG byte, etc.). See wiki for full list.",
   },
   0x118: {
     name: "byte",
@@ -481,9 +469,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SAVEMAP_BYTE,
     namespace: Namespace.Savemap,
     description: "Read a byte from Bank 0",
-    codeParamsDef: [
-      { name: "Address", description: "Byte address in bank" },
-    ],
+    codeParamsDef: [{ name: "Address", description: "Byte address in bank" }],
     notes: "Pushes the byte at Address from bank0 (Savemap bank 1).",
   },
   0x119: {
@@ -494,9 +480,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_TEMP_BYTE,
     namespace: Namespace.Temp,
     description: "Read a byte from Bank 1",
-    codeParamsDef: [
-      { name: "Address", description: "Byte address in bank" },
-    ],
+    codeParamsDef: [{ name: "Address", description: "Byte address in bank" }],
     notes: "Pushes the byte at Address from bank1 (temporary data, not saved).",
   },
   0x11b: {
@@ -507,9 +491,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SPECIAL_BYTE,
     namespace: Namespace.Special,
     description: "Read a byte from the special register",
-    codeParamsDef: [
-      { name: "Address", description: "Special variable address" },
-    ],
+    codeParamsDef: [{ name: "Address", description: "Special variable address" }],
     notes: "Access a special VM variable by address. Same addressing as 0x117.",
   },
   0x11c: {
@@ -520,10 +502,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SAVEMAP_WORD,
     namespace: Namespace.Savemap,
     description: "Read a word (2 bytes) from Bank 0",
-    codeParamsDef: [
-      { name: "Address", description: "Byte address in bank (must be even)" },
-    ],
-    notes: "Pushes word at Address from bank0 (Savemap bank 1). Unaligned accesses not allowed (Address must be multiple of 2).",
+    codeParamsDef: [{ name: "Address", description: "Byte address in bank (must be even)" }],
+    notes:
+      "Pushes word at Address from bank0 (Savemap bank 1). Unaligned accesses not allowed (Address must be multiple of 2).",
   },
   0x11d: {
     name: "word",
@@ -533,10 +514,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_TEMP_WORD,
     namespace: Namespace.Temp,
     description: "Read a word (2 bytes) from Bank 1",
-    codeParamsDef: [
-      { name: "Address", description: "Byte address in bank (must be even)" },
-    ],
-    notes: "Pushes word at Address from bank1 (temporary data). Unaligned accesses not allowed (Address must be multiple of 2).",
+    codeParamsDef: [{ name: "Address", description: "Byte address in bank (must be even)" }],
+    notes:
+      "Pushes word at Address from bank1 (temporary data). Unaligned accesses not allowed (Address must be multiple of 2).",
   },
   0x11f: {
     name: "word",
@@ -546,9 +526,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PUSH_SPECIAL_WORD,
     namespace: Namespace.Special,
     description: "Read a word (2 bytes) from the special register",
-    codeParamsDef: [
-      { name: "Address", description: "Special variable address" },
-    ],
+    codeParamsDef: [{ name: "Address", description: "Special variable address" }],
     notes: "Access a special VM variable by address. Same addressing as 0x117.",
   },
 
@@ -559,9 +537,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.GOTO,
     namespace: Namespace.System,
     description: "Unconditional jump to another location in code",
-    codeParamsDef: [
-      { name: "Address", description: "Destination address to jump to" },
-    ],
+    codeParamsDef: [{ name: "Address", description: "Destination address to jump to" }],
     notes: "Unconditional jump to the specified code address.",
   },
   0x201: {
@@ -571,12 +547,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.GOTO_IF_FALSE,
     namespace: Namespace.System,
     description: "Conditional branch to another location in code if the condition result on the stack is false",
-    stackParamsDef: [
-      { name: "Condition", description: "Boolean value" },
-    ],
-    codeParamsDef: [
-      { name: "Address", description: "Destination address to jump to" },
-    ],
+    stackParamsDef: [{ name: "Condition", description: "Boolean value" }],
+    codeParamsDef: [{ name: "Address", description: "Destination address to jump to" }],
     notes: "Jumps to Address if Condition is false (0).",
   },
   0x203: {
@@ -595,10 +567,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.CALL_FN_,
     namespace: Namespace.System,
     description: "Call another script function by ID",
-    stackParamsDef: [
-      { name: "Model", description: "Model ID" },
-    ],
-    notes: "Runs function (opcode - 0x204) in context of the specified model. If model ID >= 64, runs system function in context of current active entity (commonly 0xFFFF).",
+    stackParamsDef: [{ name: "Model", description: "Model ID" }],
+    notes:
+      "Runs function (opcode - 0x204) in context of the specified model. If model ID >= 64, runs system function in context of current active entity (commonly 0xFFFF).",
   },
 
   0x300: {
@@ -608,9 +579,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.LOAD_MODEL,
     namespace: Namespace.Entity,
     description: "Load a model for an entity",
-    stackParamsDef: [
-      { name: "Model ID", description: "Model to load into the map" },
-    ],
+    stackParamsDef: [{ name: "Model ID", description: "Model to load into the map" }],
     notes: "Loads a model into the map and runs its init function. Active entity becomes the loaded model's entity.",
   },
   0x302: {
@@ -629,10 +598,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_SPEED,
     namespace: Namespace.Entity,
     description: "Set the active entity's movement speed",
-    stackParamsDef: [
-      { name: "Speed", description: "0-255", type: { kind: 'number', min: 0, max: 255 } },
-    ],
-    notes: "Sets active entity movement speed; non-player entities will keep moving until speed set to 0 or control taken. Ignores walkmesh.",
+    stackParamsDef: [{ name: "Speed", description: "0-255", type: { kind: "number", min: 0, max: 255 } }],
+    notes:
+      "Sets active entity movement speed; non-player entities will keep moving until speed set to 0 or control taken. Ignores walkmesh.",
   },
   0x304: {
     name: "set_direction_facing",
@@ -641,9 +609,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_DIR,
     namespace: Namespace.Entity,
     description: "Set direction and facing",
-    stackParamsDef: [
-      { name: "Direction", description: "0-255", type: { kind: 'number', min: 0, max: 255 } },
-    ],
+    stackParamsDef: [{ name: "Direction", description: "0-255", type: { kind: "number", min: 0, max: 255 } }],
     notes: "Sets both movement direction and facing of the active entity.",
   },
   0x305: {
@@ -655,7 +621,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Wait for a specified number of frames (helper)",
     stackParamsDef: [
-      { name: "Number of frames", description: "Number of frames to wait", type: { kind: 'number', min: 0 } },
+      { name: "Number of frames", description: "Number of frames to wait", type: { kind: "number", min: 0 } },
     ],
     notes: "Used with 0x306.",
   },
@@ -667,7 +633,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Wait for a specified number of frames",
     stackParamsDef: [
-      { name: "Number of frames", description: "Number of frames to wait", type: { kind: 'number', min: 0 } },
+      { name: "Number of frames", description: "Number of frames to wait", type: { kind: "number", min: 0 } },
     ],
     notes: "Seems to wait the number of frames set by 0x305; may do more.",
   },
@@ -679,7 +645,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Lock/unlock player controls",
     stackParamsDef: [
-      { name: "Control lock", description: "Boolean value (0 disable, 1 enable)", type: { kind: 'boolean' } },
+      { name: "Control lock", description: "Boolean value (0 disable, 1 enable)", type: { kind: "boolean" } },
     ],
     notes: "Locks/unlocks player controls. Enabling may restore camera (needs verification).",
   },
@@ -691,8 +657,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Entity,
     description: "Set active entity's mesh coordinates",
     stackParamsDef: [
-      { name: "X", description: "Mesh X coordinate (0-35)", type: { kind: 'number', min: 0, max: 35 } },
-      { name: "Z", description: "Mesh Z coordinate (0-27)", type: { kind: 'number', min: 0, max: 27 } },
+      { name: "X", description: "Mesh X coordinate (0-35)", type: { kind: "number", min: 0, max: 35 } },
+      { name: "Z", description: "Mesh Z coordinate (0-27)", type: { kind: "number", min: 0, max: 27 } },
     ],
     notes: "Sets the active entity mesh coords. World coords = (mesh << 13) + local coords.",
   },
@@ -704,8 +670,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Entity,
     description: "Set active entity's coordinates within mesh",
     stackParamsDef: [
-      { name: "X", description: "X coordinate in mesh (0-8191)", type: { kind: 'number', min: 0, max: 8191 } },
-      { name: "Z", description: "Z coordinate in mesh (0-8191)", type: { kind: 'number', min: 0, max: 8191 } },
+      { name: "X", description: "X coordinate in mesh (0-8191)", type: { kind: "number", min: 0, max: 8191 } },
+      { name: "Z", description: "Z coordinate in mesh (0-8191)", type: { kind: "number", min: 0, max: 8191 } },
     ],
     notes: "Sets local coords within current mesh. World coords = (mesh << 13) + local coords.",
   },
@@ -716,9 +682,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_VERT_SPEED,
     namespace: Namespace.Entity,
     description: "Set active entity's vertical speed",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Behavior/scale unknown.",
   },
   0x30b: {
@@ -728,9 +692,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_Y_OFFSET,
     namespace: Namespace.Entity,
     description: "Set active entity's Y offset",
-    stackParamsDef: [
-      { name: "Y", description: "Y offset to apply to the model" },
-    ],
+    stackParamsDef: [{ name: "Y", description: "Y offset to apply to the model" }],
     notes: "Applies an offset to the model's Y position for the active entity.",
   },
   0x30c: {
@@ -760,7 +722,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     description: "Play an animation on the active entity",
     stackParamsDef: [
       { name: "Animation ID", description: "Animation to play" },
-      { name: "Loop", description: "Boolean value (loop indefinitely)", type: { kind: 'boolean' } },
+      { name: "Loop", description: "Boolean value (loop indefinitely)", type: { kind: "boolean" } },
     ],
     notes: "Plays specified animation; loops if Loop is set.",
   },
@@ -772,8 +734,18 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the active point",
     stackParamsDef: [
-      { name: "Point ID", description: "Point to set active (0-15)", type: { kind: 'number', min: 0, max: 15 } },
-      { name: "Point Type", description: "Point type", type: { kind: 'enum', options: [ { value: 0, label: 'Coordinates' }, { value: 1, label: 'Light source' } ] } },
+      { name: "Point ID", description: "Point to set active (0-15)", type: { kind: "number", min: 0, max: 15 } },
+      {
+        name: "Point Type",
+        description: "Point type",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Coordinates" },
+            { value: 1, label: "Light source" },
+          ],
+        },
+      },
     ],
     notes: "Sets which point subsequent point ops affect.",
   },
@@ -785,8 +757,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set point mesh coordinates",
     stackParamsDef: [
-      { name: "X", description: "Mesh X coordinate (0-35)", type: { kind: 'number', min: 0, max: 35 } },
-      { name: "Z", description: "Mesh Z coordinate (0-27)", type: { kind: 'number', min: 0, max: 27 } },
+      { name: "X", description: "Mesh X coordinate (0-35)", type: { kind: "number", min: 0, max: 35 } },
+      { name: "Z", description: "Mesh Z coordinate (0-27)", type: { kind: "number", min: 0, max: 27 } },
     ],
     notes: "Sets mesh coordinates for the active point.",
   },
@@ -798,8 +770,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set point coordinates within mesh",
     stackParamsDef: [
-      { name: "X", description: "X coordinate in mesh (0-8191)", type: { kind: 'number', min: 0, max: 8191 } },
-      { name: "Z", description: "Z coordinate in mesh (0-8191)", type: { kind: 'number', min: 0, max: 8191 } },
+      { name: "X", description: "X coordinate in mesh (0-8191)", type: { kind: "number", min: 0, max: 8191 } },
+      { name: "Z", description: "Z coordinate in mesh (0-8191)", type: { kind: "number", min: 0, max: 8191 } },
     ],
     notes: "Sets local coords within mesh for the active point.",
   },
@@ -811,9 +783,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the terrain color at a point",
     stackParamsDef: [
-      { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "R", description: "Red tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: "number", min: 0, max: 255 } },
     ],
     notes: "Light effect to be applied to terrain in the affected area.",
   },
@@ -838,9 +810,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the top color of the sky",
     stackParamsDef: [
-      { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "R", description: "Red tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: "number", min: 0, max: 255 } },
     ],
     notes: "Light effect applied to sky top.",
   },
@@ -852,9 +824,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Point,
     description: "Set the bottom color of the sky",
     stackParamsDef: [
-      { name: "R", description: "Red tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "G", description: "Green tint", type: { kind: 'number', min: 0, max: 255 } },
-      { name: "B", description: "Blue tint", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "R", description: "Red tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "G", description: "Green tint", type: { kind: "number", min: 0, max: 255 } },
+      { name: "B", description: "Blue tint", type: { kind: "number", min: 0, max: 255 } },
     ],
     notes: "Light effect applied to sky bottom.",
   },
@@ -865,9 +837,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.BATTLE,
     namespace: Namespace.System,
     description: "Trigger a battle by ID",
-    stackParamsDef: [
-      { name: "Battle scene?", description: "Battle scene to trigger (format unverified)" },
-    ],
+    stackParamsDef: [{ name: "Battle scene?", description: "Battle scene to trigger (format unverified)" }],
     notes: "Immediately starts the specified battle.",
   },
   0x318: {
@@ -878,10 +848,21 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Transition to a field scene",
     stackParamsDef: [
-      { name: "Location", description: "Record number in FIELD.TBL", type: { kind: 'number', min: 0 } },
-      { name: "Scenario", description: "Scenario", type: { kind: 'enum', options: [ { value: 0, label: 'Default' }, { value: 1, label: 'Alternate' } ] } },
+      { name: "Location", description: "Record number in FIELD.TBL", type: { kind: "number", min: 0 } },
+      {
+        name: "Scenario",
+        description: "Scenario",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Default" },
+            { value: 1, label: "Alternate" },
+          ],
+        },
+      },
     ],
-    notes: "Transitions to Field module using FIELD.TBL mapping; scenario selects one of two 12-byte entries per record.",
+    notes:
+      "Transitions to Field module using FIELD.TBL mapping; scenario selects one of two 12-byte entries per record.",
   },
   0x319: {
     name: "set_map_options",
@@ -891,7 +872,10 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Configure map-wide settings",
     stackParamsDef: [
-      { name: "Options", description: "Bitmask (0 default mini map on; 1 camera low; 2 show heading; 4 show big map; 8 hide mini map)" },
+      {
+        name: "Options",
+        description: "Bitmask (0 default mini map on; 1 camera low; 2 show heading; 4 show big map; 8 hide mini map)",
+      },
     ],
     notes: "Sets map/camera options. Note: Options=3 yields odd close-up camera with no movement.",
   },
@@ -902,7 +886,8 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.NOP,
     namespace: Namespace.System,
     description: "No operation (placeholder)",
-    notes: "Does nothing but historically used; likely leftover feature. May leave a value on stack (one cause for 0x100 reset usage).",
+    notes:
+      "Does nothing but historically used; likely leftover feature. May leave a value on stack (one cause for 0x100 reset usage).",
   },
   0x31c: {
     name: "enable_tilt_zoom",
@@ -911,9 +896,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_CAM_LOCK,
     namespace: Namespace.Camera,
     description: "Enable/disable camera tilt/zoom",
-    stackParamsDef: [
-      { name: "Enable", description: "0 = disabled, 1 = enabled", type: { kind: 'boolean' } },
-    ],
+    stackParamsDef: [{ name: "Enable", description: "0 = disabled, 1 = enabled", type: { kind: "boolean" } }],
     notes: "Toggles camera zoom/tilt (used e.g. during Cargo Ship travel, Ruby Weapon cutscene).",
   },
   0x31d: {
@@ -924,7 +907,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Sound,
     description: "Play a sound effect by ID",
     stackParamsDef: [
-      { name: "Sfx", description: "Sound effect to play (format unverified)", type: { kind: 'number', min: 0 } },
+      { name: "Sfx", description: "Sound effect to play (format unverified)", type: { kind: "number", min: 0 } },
     ],
     notes: "Plays specified SFX.",
   },
@@ -936,7 +919,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Camera,
     description: "Adjust camera rotation speed",
     stackParamsDef: [
-      { name: "Speed", description: "How fast should the camera rotate", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "Speed", description: "How fast should the camera rotate", type: { kind: "number", min: 0, max: 255 } },
     ],
   },
   0x320: {
@@ -956,7 +939,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Entity,
     description: "Make active entity face a point",
     stackParamsDef: [
-      { name: "Point Index", description: "Index of the point to face", type: { kind: 'number', min: 0, max: 15 } },
+      { name: "Point Index", description: "Index of the point to face", type: { kind: "number", min: 0, max: 15 } },
     ],
     notes: "Sets active entity direction to face the specified point.",
   },
@@ -968,10 +951,10 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Window,
     description: "Set window position and size",
     stackParamsDef: [
-      { name: "X", description: "X coordinate", type: { kind: 'number' } },
-      { name: "Y", description: "Y coordinate", type: { kind: 'number' } },
-      { name: "W", description: "Width", type: { kind: 'number', min: 0 } },
-      { name: "H", description: "Height", type: { kind: 'number', min: 0 } },
+      { name: "X", description: "X coordinate", type: { kind: "number" } },
+      { name: "Y", description: "Y coordinate", type: { kind: "number" } },
+      { name: "W", description: "Width", type: { kind: "number", min: 0 } },
+      { name: "H", description: "Height", type: { kind: "number", min: 0 } },
     ],
     notes: "Similar to FIELD WINDOW opcode; only one window exists on WM so no ID is needed.",
   },
@@ -982,9 +965,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_MESSAGE,
     namespace: Namespace.Window,
     description: "Set the window's message text by ID",
-    stackParamsDef: [
-      { name: "Message", description: "Dialog message ID", type: { kind: 'number', min: 0 } },
-    ],
+    stackParamsDef: [{ name: "Message", description: "Dialog message ID", type: { kind: "number", min: 0 } }],
     notes: "Like FIELD MESSAGE; text from world map mes file.",
   },
   0x326: {
@@ -995,9 +976,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Window,
     description: "Set a prompt in the window",
     stackParamsDef: [
-      { name: "Message", description: "Dialog message ID", type: { kind: 'number', min: 0 } },
-      { name: "First", description: "First option message ID", type: { kind: 'number', min: 0 } },
-      { name: "Last", description: "Last option message ID", type: { kind: 'number', min: 0 } },
+      { name: "Message", description: "Dialog message ID", type: { kind: "number", min: 0 } },
+      { name: "First", description: "First option message ID", type: { kind: "number", min: 0 } },
+      { name: "Last", description: "Last option message ID", type: { kind: "number", min: 0 } },
     ],
     notes: "Similar to FIELD ASK; result stored in a special variable accessible via 0x117.",
   },
@@ -1017,9 +998,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_MOVE_DIR,
     namespace: Namespace.Entity,
     description: "Set entity movement direction",
-    stackParamsDef: [
-      { name: "Direction", description: "0-255", type: { kind: 'number', min: 0, max: 255 } },
-    ],
+    stackParamsDef: [{ name: "Direction", description: "0-255", type: { kind: "number", min: 0, max: 255 } }],
     notes: "Sets movement direction only; unlike 0x304 it does not change facing.",
   },
   0x329: {
@@ -1030,7 +1009,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Camera,
     description: "Adjust camera tilt speed",
     stackParamsDef: [
-      { name: "Speed", description: "How fast should the camera tilt", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "Speed", description: "How fast should the camera tilt", type: { kind: "number", min: 0, max: 255 } },
     ],
     notes: "Works only when zoom/tilt enabled via 0x31c.",
   },
@@ -1042,7 +1021,11 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Camera,
     description: "Adjust camera zoom speed",
     stackParamsDef: [
-      { name: "Speed", description: "How fast should the camera zoom in/out", type: { kind: 'number', min: 0, max: 255 } },
+      {
+        name: "Speed",
+        description: "How fast should the camera zoom in/out",
+        type: { kind: "number", min: 0, max: 255 },
+      },
     ],
     notes: "Works only when zoom/tilt enabled via 0x31c.",
   },
@@ -1054,7 +1037,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Enable/disable random encounters",
     stackParamsDef: [
-      { name: "Battle lock", description: "Boolean value (0 disable, 1 enable)", type: { kind: 'boolean' } },
+      { name: "Battle lock", description: "Boolean value (0 disable, 1 enable)", type: { kind: "boolean" } },
     ],
     notes: "Toggles random encounters.",
   },
@@ -1066,8 +1049,19 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Window,
     description: "Configure window style and behavior",
     stackParamsDef: [
-      { name: "Style", description: "Window mode to set", type: { kind: 'enum', options: [ { value: 0, label: 'Normal' }, { value: 1, label: 'No background/border' }, { value: 2, label: 'Semi-transparent' } ] } },
-      { name: "Prevent closing", description: "Boolean value", type: { kind: 'boolean' } },
+      {
+        name: "Style",
+        description: "Window mode to set",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Normal" },
+            { value: 1, label: "No background/border" },
+            { value: 2, label: "Semi-transparent" },
+          ],
+        },
+      },
+      { name: "Prevent closing", description: "Boolean value", type: { kind: "boolean" } },
     ],
   },
   0x32d: {
@@ -1095,9 +1089,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_PLAYER_DIR,
     namespace: Namespace.Player,
     description: "Set the player's facing direction",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Exact behavior unknown.",
   },
   0x330: {
@@ -1108,7 +1100,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Player,
     description: "Set the active entity (e.g., player)",
     stackParamsDef: [
-      { name: "Model ID", description: "Model to set as active entity", type: { kind: 'number', min: 0 } },
+      { name: "Model ID", description: "Model to set as active entity", type: { kind: "number", min: 0 } },
     ],
     notes: "Sets the current active entity to the entity of the specified model.",
   },
@@ -1126,7 +1118,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     stackParams: 0,
     codeParams: 0,
     mnemonic: Mnemonic.CHOCOBO_RUN,
-    namespace: Namespace.Player,
+    namespace: Namespace.System,
     description: "Trigger chocobo runaway behavior",
     notes: "Makes a wild chocobo run away when you dismount it.",
   },
@@ -1139,7 +1131,11 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     description: "Rotate active entity to face a model",
     stackParamsDef: [
       { name: "Model ID", description: "Model to face" },
-      { name: "Angle offset", description: "Additional rotation after facing model (e.g., 128 = back to model)", type: { kind: 'number', min: 0, max: 255 } },
+      {
+        name: "Angle offset",
+        description: "Additional rotation after facing model (e.g., 128 = back to model)",
+        type: { kind: "number", min: 0, max: 255 },
+      },
     ],
   },
   0x334: {
@@ -1158,9 +1154,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_WALK_SPEED,
     namespace: Namespace.Entity,
     description: "Set entity walking speed",
-    stackParamsDef: [
-      { name: "Speed", description: "0-255", type: { kind: 'number', min: 0, max: 255 } },
-    ],
+    stackParamsDef: [{ name: "Speed", description: "0-255", type: { kind: "number", min: 0, max: 255 } }],
     notes: "Sets active entity movement speed that honors walkmesh contours.",
   },
   0x339: {
@@ -1179,9 +1173,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_VERT_SPEED2,
     namespace: Namespace.Entity,
     description: "Set an alternate vertical speed",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Behavior/scale unknown.",
   },
   0x33b: {
@@ -1192,7 +1184,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Fade the screen to black",
     stackParamsDef: [
-      { name: "Fade speed", description: "How fast the screen fades", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "Fade speed", description: "How fast the screen fades", type: { kind: "number", min: 0, max: 255 } },
       { name: "Unknown", description: "Unused by engine, always 0" },
     ],
     notes: "World map fade-out mechanics; exact behavior unknown.",
@@ -1213,9 +1205,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_FIELD_ENTRY_ID,
     namespace: Namespace.System,
     description: "Set field entry point by ID",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Uses data from FIELD.TBL.",
   },
   0x33e: {
@@ -1225,9 +1215,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PLAY_MUSIC,
     namespace: Namespace.Sound,
     description: "Play a music track by ID",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Sends an AKAO command.",
   },
   0x347: {
@@ -1238,7 +1226,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Entity,
     description: "Move active entity to another entity",
     stackParamsDef: [
-      { name: "Model ID", description: "Model to move the active entity to", type: { kind: 'number', min: 0 } },
+      { name: "Model ID", description: "Model to move the active entity to", type: { kind: "number", min: 0 } },
     ],
     notes: "Instantly moves the active entity to the position of the specified model.",
   },
@@ -1250,7 +1238,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Fade the screen from black",
     stackParamsDef: [
-      { name: "Fade speed", description: "How fast the screen fades", type: { kind: 'number', min: 0, max: 255 } },
+      { name: "Fade speed", description: "How fast the screen fades", type: { kind: "number", min: 0, max: 255 } },
       { name: "Unknown", description: "Unused by engine, always 0" },
     ],
     notes: "World map fade-in mechanics; exact behavior unknown.",
@@ -1263,15 +1251,23 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Update the game's progress flags",
     stackParamsDef: [
-      { name: "Progress", description: "World progress value", type: { kind: 'enum', options: [
-        { value: 0, label: 'Pre-Temple' },
-        { value: 1, label: 'Post-Temple' },
-        { value: 2, label: 'After Ultimate appears' },
-        { value: 3, label: 'After Mideel' },
-        { value: 4, label: 'After Ultimate killed' },
-      ] } },
+      {
+        name: "Progress",
+        description: "World progress value",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Pre-Temple" },
+            { value: 1, label: "Post-Temple" },
+            { value: 2, label: "After Ultimate appears" },
+            { value: 3, label: "After Mideel" },
+            { value: 4, label: "After Ultimate killed" },
+          ],
+        },
+      },
     ],
-    notes: "Determines replacement blocks from MAP file. Values commonly: 0=pre-Temple; 1=post-Temple; 2=after Ultimate appears; 3=after Mideel; 4=after Ultimate killed.",
+    notes:
+      "Determines replacement blocks from MAP file. Values commonly: 0=pre-Temple; 1=post-Temple; 2=after Ultimate appears; 3=after Mideel; 4=after Ultimate killed.",
   },
   0x34a: {
     name: "play_layer_animation",
@@ -1280,10 +1276,9 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.PLAY_LAYER_ANIM,
     namespace: Namespace.System,
     description: "Play an animation on a layer",
-    stackParamsDef: [
-      { name: "Animation ID", description: "Hardcoded animation id", type: { kind: 'number', min: 0 } },
-    ],
-    notes: "Plays a hardcoded 2D animation at the active entity's position. See wiki for list of IDs (e.g., 1 water ripples, 2 smoke/vapor, 6 impact circle, 20-23 sparks).",
+    stackParamsDef: [{ name: "Animation ID", description: "Hardcoded animation id", type: { kind: "number", min: 0 } }],
+    notes:
+      "Plays a hardcoded 2D animation at the active entity's position. See wiki for list of IDs (e.g., 1 water ripples, 2 smoke/vapor, 6 impact circle, 20-23 sparks).",
   },
   0x34b: {
     name: "set_chocobo_type",
@@ -1293,13 +1288,20 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Player,
     description: "Set the player's chocobo type",
     stackParamsDef: [
-      { name: "Type", description: "Chocobo type (0 yellow, 1 green, 2 blue, 3 black, 4 gold)", type: { kind: 'enum', options: [
-        { value: 0, label: 'Yellow' },
-        { value: 1, label: 'Green' },
-        { value: 2, label: 'Blue' },
-        { value: 3, label: 'Black' },
-        { value: 4, label: 'Gold' },
-      ] } },
+      {
+        name: "Type",
+        description: "Chocobo type (0 yellow, 1 green, 2 blue, 3 black, 4 gold)",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Yellow" },
+            { value: 1, label: "Green" },
+            { value: 2, label: "Blue" },
+            { value: 3, label: "Black" },
+            { value: 4, label: "Gold" },
+          ],
+        },
+      },
     ],
     notes: "Sets chocobo color and walkmesh parameters.",
   },
@@ -1311,12 +1313,19 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Player,
     description: "Set the submarine's color",
     stackParamsDef: [
-      { name: "Color", description: "Submarine type (0 red, 1 blue). Negative values map to chocobo colors (e.g., -1 gold, -2 black).", type: { kind: 'enum', options: [
-        { value: 0, label: 'Red' },
-        { value: 1, label: 'Blue' },
-        { value: -1, label: 'Gold' },
-        { value: -2, label: 'Black' },
-      ] } },
+      {
+        name: "Color",
+        description: "Submarine type (0 red, 1 blue). Negative values map to chocobo colors (e.g., -1 gold, -2 black).",
+        type: {
+          kind: "enum",
+          options: [
+            { value: 0, label: "Red" },
+            { value: 1, label: "Blue" },
+            { value: -1, label: "Gold" },
+            { value: -2, label: "Black" },
+          ],
+        },
+      },
     ],
     notes: "Changes submarine color only; no gameplay effect.",
   },
@@ -1328,9 +1337,13 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Show an animation layer",
     stackParamsDef: [
-      { name: "Layer ID", description: "Layer this animation belongs to", type: { kind: 'number', min: 0 } },
-      { name: "Animation ID", description: "See opcode 0x34a for IDs", type: { kind: 'number', min: 0 } },
-      { name: "Repeat interval", description: "Frames between repeated animation instances", type: { kind: 'number', min: 0 } },
+      { name: "Layer ID", description: "Layer this animation belongs to", type: { kind: "number", min: 0 } },
+      { name: "Animation ID", description: "See opcode 0x34a for IDs", type: { kind: "number", min: 0 } },
+      {
+        name: "Repeat interval",
+        description: "Frames between repeated animation instances",
+        type: { kind: "number", min: 0 },
+      },
     ],
     notes: "Positions animation relative to the active entity; repeats spawn new instances every N frames.",
   },
@@ -1342,7 +1355,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Hide an animation layer",
     stackParamsDef: [
-      { name: "Layer ID", description: "Animation layer to stop repeating/hide", type: { kind: 'number', min: 0 } },
+      { name: "Layer ID", description: "Animation layer to stop repeating/hide", type: { kind: "number", min: 0 } },
     ],
   },
   0x34f: {
@@ -1352,9 +1365,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_Y_POS,
     namespace: Namespace.Entity,
     description: "Set active entity's Y position",
-    stackParamsDef: [
-      { name: "Y", description: "Y position", type: { kind: 'number' } },
-    ],
+    stackParamsDef: [{ name: "Y", description: "Y position", type: { kind: "number" } }],
     notes: "Directly sets the active entity Y position.",
   },
   0x350: {
@@ -1364,9 +1375,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SHOW_METEOR,
     namespace: Namespace.System,
     description: "Show/hide the meteor in the sky",
-    stackParamsDef: [
-      { name: "Meteor", description: "Boolean value", type: { kind: 'boolean' } },
-    ],
+    stackParamsDef: [{ name: "Meteor", description: "Boolean value", type: { kind: "boolean" } }],
     notes: "Turns the meteor sky overlay on/off.",
   },
   0x351: {
@@ -1377,7 +1386,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.Sound,
     description: "Adjust the music volume",
     stackParamsDef: [
-      { name: "Volume", description: "Music volume to set", type: { kind: 'number', min: 0, max: 127 } },
+      { name: "Volume", description: "Music volume to set", type: { kind: "number", min: 0, max: 127 } },
     ],
     notes: "Sets BGM volume.",
   },
@@ -1388,9 +1397,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SHAKE_CAM,
     namespace: Namespace.Camera,
     description: "Enable/disable camera shaking",
-    stackParamsDef: [
-      { name: "Shake", description: "Boolean value", type: { kind: 'boolean' } },
-    ],
+    stackParamsDef: [{ name: "Shake", description: "Boolean value", type: { kind: "boolean" } }],
     notes: "Toggles earthquake effect.",
   },
   0x353: {
@@ -1414,9 +1421,10 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     namespace: Namespace.System,
     description: "Enable/disable vehicle usage",
     stackParamsDef: [
-      { name: "Active", description: "0 scripts disabled, 1 scripts enabled", type: { kind: 'boolean' } },
+      { name: "Active", description: "0 scripts disabled, 1 scripts enabled", type: { kind: "boolean" } },
     ],
-    notes: "Disables/enables an entity's scripts and interaction. Disabling on a vehicle prevents entering; disabling on a weapon entity prevents interaction.",
+    notes:
+      "Disables/enables an entity's scripts and interaction. Disabling on a vehicle prevents entering; disabling on a weapon entity prevents interaction.",
   },
   0x355: {
     name: "set_battle_timer",
@@ -1425,9 +1433,7 @@ export const Opcodes: Record<number, OpcodeDefinition> = {
     mnemonic: Mnemonic.SET_BATTLE_TIMER,
     namespace: Namespace.System,
     description: "Set the battle timer value",
-    stackParamsDef: [
-      { name: "Unknown", description: "Unknown" },
-    ],
+    stackParamsDef: [{ name: "Unknown", description: "Unknown" }],
     notes: "Seems to set Emerald Weapon battle timer, but does more.",
   },
-};
+}
