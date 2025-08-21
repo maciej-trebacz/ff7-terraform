@@ -32,8 +32,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 
       // Check modifiers
       const ctrlOrCmdPressed = isMac ? event.metaKey : event.ctrlKey
-      const shiftPressed = event.shiftKey
-      const altPressed = event.altKey
+      // const shiftPressed = event.shiftKey
+      // const altPressed = event.altKey
 
       // For shortcuts with ctrlOrCmd, check the appropriate modifier
       if (shortcut.ctrlOrCmd) {
