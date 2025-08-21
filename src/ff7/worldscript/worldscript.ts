@@ -267,12 +267,12 @@ export class Worldscript {
       if (this.stack.length === 0) {
         throw new Error(`Stack underflow for CALL_FN_ at line ${lineNumber}`);
       }
-      const param = this.stack.pop() as Expression;
+      const entityId = this.stack.pop() as Expression;
       const funcId = codeParams[0];
       const callExpr: FunctionCallExpression = {
         type: 'FunctionCall',
         callee: { type: 'Member', object: { type: 'Identifier', name: 'System' }, property: { type: 'Identifier', name: 'call_function' } },
-        arguments: [{ type: 'Literal', value: funcId }, param]
+        arguments: [entityId, { type: 'Literal', value: funcId }]
       };
       statements.push({ type: 'ExpressionStatement', expression: callExpr });
     } else if (opcode.mnemonic === Mnemonic.WRITE) {
@@ -571,7 +571,7 @@ export class Worldscript {
           }
         }
   
-        if (property.name === 'call_function' && argIndex === 1) {
+        if (property.name === 'call_function' && argIndex === 0) {
           const value = (node as LiteralExpression).value;
           if (typeof value === 'number' && modelsMapping[value]) {
             return `Entities.${modelsMapping[value]}`;
@@ -833,10 +833,10 @@ export class Worldscript {
 
     if (objectName === 'System' && functionName === 'call_function') {
       if (expr.arguments.length !== 2) throw new Error('System.call_function expects exactly two arguments.');
-      const [funcIdExpr, paramExpr] = expr.arguments;
-      if (funcIdExpr.type !== 'Literal' || typeof funcIdExpr.value !== 'number') throw new Error('First argument to System.call_function must be a numeric literal.');
+      const [entityIdExpr, funcIdExpr] = expr.arguments;
+      if (funcIdExpr.type !== 'Literal' || typeof funcIdExpr.value !== 'number') throw new Error('Second argument to System.call_function must be a numeric literal.');
       const funcId = funcIdExpr.value;
-      const instructions = this.generateExpression(paramExpr);
+      const instructions = this.generateExpression(entityIdExpr);
       instructions.push({ type: 'instruction', mnemonic: `CALL_FN_${funcId}`, codeParams: [] });
       return instructions;
     } else if (objectName === 'Memory' && functionName === 'write') {

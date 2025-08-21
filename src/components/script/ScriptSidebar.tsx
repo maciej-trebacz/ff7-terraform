@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { loadFieldOptions } from "@/lib/field-options"
 import { useLocationsState } from "@/hooks/useLocationsState"
 import { useMessagesState } from "@/hooks/useMessagesState"
-//
-import { modelsMapping, fieldsMapping } from "@/ff7/worldscript/constants"
+import { useScriptsState } from "@/hooks/useScriptState"
+import { modelsMapping, systemScriptNames, modelScriptNames, fieldsMapping } from "@/ff7/worldscript/constants"
+import { FunctionType } from "@/ff7/evfile"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { MapPicker } from "@/components/map/MapPicker"
@@ -52,6 +53,7 @@ const customUiRegistry: Record<string, CustomRenderer> = {
   "Point.set_mesh_coords": (ctx, onBatch) => <SetMeshCoordsUI ctx={ctx} onBatch={onBatch} scope="Point" />,
   "Entity.set_coords_in_mesh": (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} />,
   "Point.set_coords_in_mesh": (ctx, onBatch) => <SetCoordsInMeshUI ctx={ctx} onBatch={onBatch} />,
+  "System.call_function": (ctx, onBatch) => <CallFunctionUI ctx={ctx} onBatch={onBatch} />,
 }
 
 function colorTriple(ctx: CallContext, onBatch: (updates: Array<{ index: number; newText: string }>) => void) {
@@ -1031,6 +1033,161 @@ function SetCoordsInMeshUI({
 }
 
 // removed legacy MeshPicker in favor of MapPicker
+
+function CallFunctionUI({
+  ctx,
+  onBatch,
+}: {
+  ctx: CallContext
+  onBatch: (updates: Array<{ index: number; newText: string }>) => void
+}) {
+  const { functions, selectScript, setScriptType } = useScriptsState()
+
+  // Parse current values with new order: entityId, functionId
+  const rawEntityText = ctx.args[0]?.text?.trim() || ""
+  const slugMatch = rawEntityText.match(/^Entities\.([A-Za-z0-9_]+)$/i)
+  let entityId: number | "" = ""
+  if (slugMatch) {
+    const slug = slugMatch[1]
+    const found = Object.entries(modelsMapping).find(([_, name]) => name === slug)
+    entityId = found ? parseInt(found[0], 10) : ""
+  } else {
+    const n = parseInt(rawEntityText || "0", 10)
+    entityId = Number.isNaN(n) ? "" : n
+  }
+
+  const functionId = parseInt(ctx.args[1]?.text || "0", 10) || 0
+
+  // Create entity options from modelsMapping
+  const entityOptions = useMemo(() => {
+    return Object.entries(modelsMapping).map(([id, name]) => ({
+      value: parseInt(id, 10),
+      label: `${name} (${id})`,
+      slug: name
+    })).sort((a, b) => a.value - b.value)
+  }, [])
+
+  // Get available functions for selected entity
+  const functionOptions = useMemo(() => {
+    if (entityId === 65535) {
+      // System entity
+      return functions
+        .filter(f => f.type === FunctionType.System)
+        .map(f => ({
+          value: f.id,
+          label: systemScriptNames[f.id] ? `${systemScriptNames[f.id]} (${f.id})` : `system_${f.id} (${f.id})`
+        }))
+        .sort((a, b) => a.value - b.value)
+    } else {
+      // Model entity
+      return functions
+        .filter(f => f.type === FunctionType.Model && f.modelId === entityId)
+        .map(f => ({
+          value: f.id,
+          label: modelScriptNames[f.id] ? `${modelScriptNames[f.id]} (${f.id})` : `model_${f.id} (${f.id})`
+        }))
+        .sort((a, b) => a.value - b.value)
+    }
+  }, [functions, entityId])
+
+  const handleEntityChange = (value: string) => {
+    const newEntityId = parseInt(value, 10)
+    const found = entityOptions.find(option => option.value === newEntityId)
+    const newText = found ? `Entities.${found.slug}` : String(newEntityId)
+    onBatch([{ index: 0, newText }])
+  }
+
+  const handleFunctionChange = (value: string) => {
+    const newFunctionId = parseInt(value, 10)
+    onBatch([{ index: 1, newText: String(newFunctionId) }])
+  }
+
+  const handleJumpToFunction = () => {
+    if (entityId === "" || functionId === 0) return
+
+    // Find the target script based on entity and function ID
+    let targetScript = null
+
+    if (entityId === 65535) {
+      // System entity
+      targetScript = functions.find(f => f.type === FunctionType.System && f.id === functionId)
+    } else {
+      // Model entity
+      targetScript = functions.find(f => f.type === FunctionType.Model && f.modelId === entityId && f.id === functionId)
+    }
+
+    if (targetScript) {
+      // Set the script type to match the target script's type
+      setScriptType(targetScript.type)
+      selectScript(targetScript)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium">
+        {ctx.namespace}.{ctx.method}
+      </div>
+      {ctx.description && <div className="text-[11px] text-muted-foreground">{ctx.description}</div>}
+
+      <div className="space-y-1">
+        <Label className="text-xs">Entity</Label>
+        <Select
+          value={entityId === "" ? "" : String(entityId)}
+          onValueChange={handleEntityChange}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select entity" />
+          </SelectTrigger>
+          <SelectContent>
+            {entityOptions.map((option) => (
+              <SelectItem key={option.value} value={String(option.value)} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Function ID</Label>
+        <Select
+          value={String(functionId)}
+          onValueChange={handleFunctionChange}
+          disabled={functionOptions.length === 0}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder={functionOptions.length === 0 ? "No functions available" : "Select function"} />
+          </SelectTrigger>
+          <SelectContent>
+            {functionOptions.map((option) => (
+              <SelectItem key={option.value} value={String(option.value)} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {functionOptions.length === 0 && (
+          <div className="text-[11px] text-muted-foreground">
+            No functions found for selected entity
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-7 text-xs w-full"
+          onClick={handleJumpToFunction}
+          disabled={entityId === "" || functionId === 0}
+        >
+          Jump to Function
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 function DirectionRadial({ value, onChange }: { value: number; onChange: (val: number) => void }) {
   const size = 112
