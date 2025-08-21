@@ -13,13 +13,13 @@ interface AddScriptModalProps {
 }
 
 interface ModelScriptParams {
-  type: 'model'
+  type: "model"
   modelId: number
   functionId: number
 }
 
 interface MeshScriptParams {
-  type: 'mesh'
+  type: "mesh"
   x: number
   y: number
   functionId: number
@@ -35,20 +35,20 @@ export function AddScriptModal({ isOpen, onClose, scriptType, onAddScript }: Add
     if (scriptType === FunctionType.Model) {
       if (!modelId || !functionId) return
       onAddScript({
-        type: 'model',
+        type: "model",
         modelId: parseInt(modelId),
-        functionId: parseInt(functionId)
+        functionId: parseInt(functionId),
       })
     } else if (scriptType === FunctionType.Mesh) {
       if (!row || !column || !functionId) return
       onAddScript({
-        type: 'mesh',
+        type: "mesh",
         x: parseInt(row),
         y: parseInt(column),
-        functionId: parseInt(functionId)
+        functionId: parseInt(functionId),
       })
     }
-    
+
     // Reset form
     setModelId("")
     setFunctionId("")
@@ -77,7 +77,7 @@ export function AddScriptModal({ isOpen, onClose, scriptType, onAddScript }: Add
 
   // Generate model options from modelsMapping
   const modelOptions = Object.entries(modelsMapping)
-    .filter(([id]) => id !== '65535') // Exclude system
+    .filter(([id]) => id !== "65535") // Exclude system
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => parseInt(a.id) - parseInt(b.id))
 
@@ -133,8 +133,8 @@ export function AddScriptModal({ isOpen, onClose, scriptType, onAddScript }: Add
                   ))}
                   {/* Add additional function IDs that might not be in the mapping */}
                   {Array.from({ length: 256 }, (_, i) => i)
-                    .filter(i => !functionOptions.some(opt => parseInt(opt.id) === i))
-                    .map(i => (
+                    .filter((i) => !functionOptions.some((opt) => parseInt(opt.id) === i))
+                    .map((i) => (
                       <SelectItem key={i} value={i.toString()} className="text-xs">
                         Function {i}
                       </SelectItem>

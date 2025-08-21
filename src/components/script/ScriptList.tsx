@@ -53,7 +53,7 @@ export function ScriptList({ className }: ScriptListProps) {
 
   // Filter and sort scripts
   const filteredScripts = functions
-    .filter(f => f.type === scriptType)
+    .filter((f) => f.type === scriptType)
     .sort((a, b) => {
       // Sort by type first, then by specific criteria for each type
       if (a.type !== b.type) return a.type - b.type
@@ -85,9 +85,9 @@ export function ScriptList({ className }: ScriptListProps) {
 
   const handleAddScript = async (params: any) => {
     try {
-      if (params.type === 'model') {
+      if (params.type === "model") {
         await addModelScript(params.modelId, params.functionId)
-      } else if (params.type === 'mesh') {
+      } else if (params.type === "mesh") {
         await addMeshScript(params.x, params.y, params.functionId)
       }
     } catch (error) {
@@ -100,25 +100,16 @@ export function ScriptList({ className }: ScriptListProps) {
   return (
     <div className={cn("bg-background p-2", className)}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-medium text-muted-foreground">
-          Available Scripts ({filteredScripts.length})
-        </div>
+        <div className="text-xs font-medium text-muted-foreground">Available Scripts ({filteredScripts.length})</div>
         {canAddScripts && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5"
-            onClick={() => setIsAddModalOpen(true)}
-          >
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-3 w-3" />
           </Button>
         )}
       </div>
       <div className="space-y-1">
         {filteredScripts.length === 0 ? (
-          <div className="text-xs text-muted-foreground">
-            No scripts loaded
-          </div>
+          <div className="text-xs text-muted-foreground">No scripts loaded</div>
         ) : (
           filteredScripts.map((script) => (
             <Button
@@ -131,9 +122,7 @@ export function ScriptList({ className }: ScriptListProps) {
                 <span>{getScriptLabel(script)}</span>
                 <div className="flex items-center gap-1">
                   {hasShortName(script) && (
-                    <span className="text-[10px] font-thin text-muted-foreground">
-                      (#{script.id})
-                    </span>
+                    <span className="text-[10px] font-thin text-muted-foreground">(#{script.id})</span>
                   )}
                   {script.aliasId !== undefined && (
                     <span className="text-[10px] font-thin text-muted-foreground">
