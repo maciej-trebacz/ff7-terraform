@@ -11,7 +11,7 @@ export interface ChocoboRating {
 }
 
 export interface EncounterPair {
-  encounterId: number; // 0..255
+  encounterId: number; // 0..1023 (10 bits)
   rate: number; // only lower 6 bits used by the game (0..63)
 }
 
@@ -47,18 +47,46 @@ const chocoboRatingEntry = new Parser()
   .uint16le('battleSceneId')
   .uint16le('rating');
 
-const encounterPair = new Parser()
-  .uint8('encounterId')
-  .uint8('rate');
+function decodeEncounterPairPacked(packed: number): EncounterPair {
+  return { rate: packed >> 10, encounterId: packed & 0x3ff };
+}
+
+function decodeEncounterPairObject(o: any): EncounterPair {
+  return decodeEncounterPairPacked(o.packed);
+}
+
+function decodeEncounterPairArray(arr: any[]): EncounterPair[] {
+  return arr.map(decodeEncounterPairObject);
+}
+
+const encounterPair = new Parser().uint16le('packed');
 
 const encounterSet = new Parser()
   .uint8('active')
   .uint8('encounterRate')
-  .array('normalEncounters', { type: encounterPair, length: 6 })
-  .array('backAttacks', { type: encounterPair, length: 2 })
-  .nest('sideAttack', { type: encounterPair })
-  .nest('pincerAttack', { type: encounterPair })
-  .array('chocoboEncounters', { type: encounterPair, length: 4 })
+  .array('normalEncounters', {
+    type: encounterPair,
+    length: 6,
+    formatter: decodeEncounterPairArray
+  })
+  .array('backAttacks', {
+    type: encounterPair,
+    length: 2,
+    formatter: decodeEncounterPairArray
+  })
+  .nest('sideAttack', {
+    type: encounterPair,
+    formatter: decodeEncounterPairObject
+  })
+  .nest('pincerAttack', {
+    type: encounterPair,
+    formatter: decodeEncounterPairObject
+  })
+  .array('chocoboEncounters', {
+    type: encounterPair,
+    length: 4,
+    formatter: decodeEncounterPairArray
+  })
   .skip(2); // padding
 
 const region = new Parser().array('sets', { type: encounterSet, length: 4 });
@@ -148,8 +176,8 @@ export class EncWFile {
         offset += 1;
 
         const writePair = (p: EncounterPair) => {
-          view.setUint8(offset, p.encounterId ?? 0);
-          view.setUint8(offset + 1, p.rate ?? 0);
+          const packed = (p.rate << 10) | p.encounterId;
+          view.setUint16(offset, packed, true);
           offset += 2;
         };
 
